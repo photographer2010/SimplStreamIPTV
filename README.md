@@ -16,9 +16,9 @@ Your #1 Streaming Service! SimplStream was build by SimplStudios which was creat
 
 ## Screenshots
 
-| Search | Home | Profiles | Detail |
+| Home | Search | Profiles | Detail |
 |--------|------|----------|--------|
-| ![Search](screenshots/Screenshot_20260128_140758.png) | ![Home](screenshots/Screenshot_20260128_140831.png) | ![Profiles](screenshots/Screenshot_20260128_141049.png) | ![Detail](screenshots/Screenshot_20260128_141124.png) |
+| ![Home](screenshots/Screenshot_20260128_140758.png) | ![Search](screenshots/Screenshot_20260128_140831.png) | ![Profiles](screenshots/Screenshot_20260128_141049.png) | ![Detail](screenshots/Screenshot_20260128_141124.png) |
 
 ## Tech Stack
 
