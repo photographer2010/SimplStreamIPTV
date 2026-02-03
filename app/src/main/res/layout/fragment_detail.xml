@@ -251,9 +251,11 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
                         android:padding="12dp"
-                        android:background="@drawable/bg_button_secondary"
+                        android:background="@drawable/bg_season_spinner"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
                         android:drawableEnd="@drawable/ic_dropdown"
                         android:drawablePadding="8dp"
                         tools:text="Season 1" />
@@ -265,9 +267,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:orientation="vertical"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    xmlns:app="http://schemas.android.com/apk/res-auto" />
+                    android:clipToPadding="false" />
 
             </LinearLayout>
 

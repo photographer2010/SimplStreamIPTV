@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Card background - unfocused state -->
+<!-- Card background - Netflix style with rounded corners -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/background_card"/>
+    <solid android:color="@color/brand_card"/>
     <corners android:radius="@dimen/card_corner_radius"/>
 </shape>

@@ -208,7 +208,7 @@ class ProfileSelectionFragment : Fragment() {
 }
 
 /**
- * Profile Adapter for RecyclerView
+ * Profile Adapter for RecyclerView - Netflix Style
  */
 class ProfileAdapter(
     private val onProfileClick: (Profile) -> Unit,
@@ -238,8 +238,9 @@ class ProfileAdapter(
         private val avatarView: View = itemView.findViewById(R.id.avatar)
         private val initialText: TextView = itemView.findViewById(R.id.avatar_initial)
         private val nameText: TextView = itemView.findViewById(R.id.profile_name)
-        private val pinIcon: View = itemView.findViewById(R.id.pin_icon)
-        private val kidsLabel: View = itemView.findViewById(R.id.kids_label)
+        private val pinBadge: View = itemView.findViewById(R.id.pin_badge)
+        private val kidsBadge: View = itemView.findViewById(R.id.kids_badge)
+        private val focusRing: View = itemView.findViewById(R.id.focus_ring)
         
         private var currentProfile: Profile? = null
         
@@ -277,14 +278,22 @@ class ProfileAdapter(
                 }
             }
             
-            // Focus change animation
+            // Focus change animation - Netflix style
             itemView.setOnFocusChangeListener { _, hasFocus ->
-                val scale = if (hasFocus) 1.1f else 1.0f
+                // Scale animation
+                val scale = if (hasFocus) 1.08f else 1.0f
                 itemView.animate()
                     .scaleX(scale)
                     .scaleY(scale)
-                    .setDuration(150)
+                    .setDuration(200)
                     .start()
+                
+                // Show/hide focus ring
+                focusRing.visibility = if (hasFocus) View.VISIBLE else View.INVISIBLE
+                
+                // Elevate on focus
+                itemView.elevation = if (hasFocus) 12f else 0f
+                
                 itemView.isSelected = hasFocus
             }
         }
@@ -305,9 +314,9 @@ class ProfileAdapter(
             // Set name
             nameText.text = profile.name
             
-            // Show/hide icons
-            pinIcon.isVisible = profile.hasPin
-            kidsLabel.isVisible = profile.isKidsProfile
+            // Show/hide badges
+            pinBadge.isVisible = profile.hasPin
+            kidsBadge.isVisible = profile.isKidsProfile
         }
     }
 }

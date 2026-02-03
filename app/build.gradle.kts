@@ -15,8 +15,8 @@ android {
         applicationId = "com.simplstudios.simplstream"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "2.0.0"
 
         // TMDB API Configuration
         buildConfigField("String", "TMDB_API_KEY", "\"335a2d8a6455213ca6201aba18056860\"")
@@ -24,17 +24,35 @@ android {
         buildConfigField("String", "TMDB_BASE_URL", "\"https://api.themoviedb.org/3/\"")
         buildConfigField("String", "TMDB_IMAGE_BASE_URL", "\"https://image.tmdb.org/t/p/\"")
         
-        // Video Sources (embed URLs) - 4 servers only
+        // SimplStream API (TMDB Embed API hosted on Render) - DEPRECATED
+        buildConfigField("String", "STREAM_API_BASE_URL", "\"https://simplstream-api.onrender.com/\"")
+        
+        // Consumet API (FlixHQ provider) - Returns direct m3u8 streams!
+        buildConfigField("String", "CONSUMET_API_BASE_URL", "\"https://simplstream-consumet.vercel.app/\"")
+        
+        // StremSRC API - VidSRC extractor for Stremio (fallback for classic movies)
+        buildConfigField("String", "STREMSRC_API_BASE_URL", "\"https://stremsrc.vercel.app/\"")
+        
+        // Video Sources (embed URLs) - 3 servers (legacy fallback)
         buildConfigField("String", "MOVIES111_BASE_URL", "\"https://111movies.com\"")  // Server Alpha
         buildConfigField("String", "VIDNEST_BASE_URL", "\"https://vidnest.fun\"")      // Server Dot (least ads)
-        buildConfigField("String", "VIDSRC_BASE_URL", "\"https://vidsrc-embed.ru/embed\"") // Server Canteen (uses IMDB ID)
         buildConfigField("String", "VIDLINK_BASE_URL", "\"https://vidlink.pro\"")      // Server Omega
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("../simplstream-release.keystore")
+            storePassword = "simplstream123"
+            keyAlias = "simplstream"
+            keyPassword = "simplstream123"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

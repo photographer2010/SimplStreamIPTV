@@ -1,22 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Card background - focused state with blue border -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Blue border/glow -->
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="@color/focus_border"/>
-            <corners android:radius="@dimen/card_corner_radius"/>
-        </shape>
-    </item>
-    <!-- Inner card -->
-    <item
-        android:left="@dimen/focus_border_width"
-        android:top="@dimen/focus_border_width"
-        android:right="@dimen/focus_border_width"
-        android:bottom="@dimen/focus_border_width">
-        <shape android:shape="rectangle">
-            <solid android:color="@color/background_card"/>
-            <corners android:radius="10dp"/>
-        </shape>
-    </item>
-</layer-list>
+<!-- Card focus state - subtle highlight, no border -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#332563EB"/>
+    <corners android:radius="@dimen/card_corner_radius"/>
+</shape>

@@ -2,10 +2,12 @@ package com.simplstudios.simplstream.di
 
 import com.simplstudios.simplstream.data.repository.ContentRepositoryImpl
 import com.simplstudios.simplstream.data.repository.ProfileRepositoryImpl
+import com.simplstudios.simplstream.data.repository.RecommendationRepositoryImpl
 import com.simplstudios.simplstream.data.repository.WatchHistoryRepositoryImpl
 import com.simplstudios.simplstream.data.repository.WatchlistRepositoryImpl
 import com.simplstudios.simplstream.domain.repository.ContentRepository
 import com.simplstudios.simplstream.domain.repository.ProfileRepository
+import com.simplstudios.simplstream.domain.repository.RecommendationRepository
 import com.simplstudios.simplstream.domain.repository.WatchHistoryRepository
 import com.simplstudios.simplstream.domain.repository.WatchlistRepository
 import dagger.Binds
@@ -41,4 +43,10 @@ abstract class RepositoryModule {
     abstract fun bindWatchlistRepository(
         impl: WatchlistRepositoryImpl
     ): WatchlistRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindRecommendationRepository(
+        impl: RecommendationRepositoryImpl
+    ): RecommendationRepository
 }

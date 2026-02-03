@@ -15,13 +15,51 @@
 
         <action
             android:id="@+id/action_profile_to_home"
-            app:destination="@id/browseFragment"
+            app:destination="@id/mainContainerFragment"
             app:popUpTo="@id/profileSelectionFragment"
             app:popUpToInclusive="true" />
 
     </fragment>
 
-    <!-- Browse / Home -->
+    <!-- Main Container (Netflix-style with header navigation) -->
+    <fragment
+        android:id="@+id/mainContainerFragment"
+        android:name="com.simplstudios.simplstream.presentation.home.MainContainerFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_main_container">
+
+        <action
+            android:id="@+id/action_main_to_detail"
+            app:destination="@id/detailFragment">
+            <argument
+                android:name="contentId"
+                app:argType="integer" />
+            <argument
+                android:name="mediaType"
+                app:argType="string" />
+        </action>
+
+        <action
+            android:id="@+id/action_main_to_search"
+            app:destination="@id/searchFragment" />
+
+        <action
+            android:id="@+id/action_main_to_profile"
+            app:destination="@id/profileSelectionFragment"
+            app:popUpTo="@id/mainContainerFragment"
+            app:popUpToInclusive="true" />
+
+        <action
+            android:id="@+id/action_main_to_settings"
+            app:destination="@id/settingsFragment" />
+
+        <action
+            android:id="@+id/action_main_to_mylist"
+            app:destination="@id/myListFragment" />
+
+    </fragment>
+
+    <!-- Legacy Browse Fragment (kept for backward compatibility) -->
     <fragment
         android:id="@+id/browseFragment"
         android:name="com.simplstudios.simplstream.presentation.home.BrowseFragment"
@@ -74,12 +112,12 @@
 
     </fragment>
 
-    <!-- Detail -->
+    <!-- Detail (Netflix-style) -->
     <fragment
         android:id="@+id/detailFragment"
-        android:name="com.simplstudios.simplstream.presentation.detail.DetailFragment"
+        android:name="com.simplstudios.simplstream.presentation.detail.DetailNetflixFragment"
         android:label="Detail"
-        tools:layout="@layout/fragment_detail">
+        tools:layout="@layout/fragment_detail_netflix">
 
         <argument
             android:name="contentId"
@@ -91,10 +129,10 @@
 
         <action
             android:id="@+id/action_detail_to_player"
-            app:destination="@id/playerFragment">
+            app:destination="@id/nativePlayerFragment">
             <argument
                 android:name="playbackArgs"
-                app:argType="com.simplstudios.simplstream.presentation.player.PlaybackArgs" />
+                app:argType="com.simplstudios.simplstream.presentation.player.NativePlaybackArgs" />
         </action>
 
         <action
@@ -132,7 +170,7 @@
 
     </fragment>
 
-    <!-- Player (WebView) -->
+    <!-- Player (WebView) - Legacy -->
     <fragment
         android:id="@+id/playerFragment"
         android:name="com.simplstudios.simplstream.presentation.player.PlayerFragment"
@@ -142,6 +180,19 @@
         <argument
             android:name="playbackArgs"
             app:argType="com.simplstudios.simplstream.presentation.player.PlaybackArgs" />
+
+    </fragment>
+
+    <!-- Native Player (ExoPlayer) - No Ads! -->
+    <fragment
+        android:id="@+id/nativePlayerFragment"
+        android:name="com.simplstudios.simplstream.presentation.player.NativePlayerFragment"
+        android:label="Player"
+        tools:layout="@layout/fragment_native_player">
+
+        <argument
+            android:name="playbackArgs"
+            app:argType="com.simplstudios.simplstream.presentation.player.NativePlaybackArgs" />
 
     </fragment>
 

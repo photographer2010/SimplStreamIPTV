@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(adb install:*)",
+      "Bash(adb shell am start:*)",
+      "Bash(adb shell monkey:*)",
+      "Bash(adb shell:*)",
+      "Bash(findstr:*)",
+      "Bash(adb devices:*)",
+      "Bash(adb uninstall:*)",
+      "Bash(./gradlew assembleRelease:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:consumet.org)",
+      "Bash(emulator:*)",
+      "Bash(adb logcat:*)",
+      "Bash(.gradlew.bat assembleDebug)",
+      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\hello\\\\Downloads\\\\SimplStream && gradlew.bat assembleDebug\")",
+      "Bash(cmd.exe /c \"c:\\\\Users\\\\hello\\\\Downloads\\\\SimplStream\\\\gradlew.bat -p c:\\\\Users\\\\hello\\\\Downloads\\\\SimplStream assembleDebug\")",
+      "Bash(powershell.exe -Command \"Set-Location ''c:\\\\Users\\\\hello\\\\Downloads\\\\SimplStream''; .\\\\gradlew.bat assembleDebug\")",
+      "Bash(powershell.exe -Command \"Set-Location ''c:\\\\Users\\\\hello\\\\Downloads\\\\SimplStream''; .\\\\gradlew.bat assembleRelease\")",
+      "Bash(dir:*)",
+      "Bash(copy:*)",
+      "Bash(powershell.exe -Command \".\\\\gradlew.bat assembleRelease\")",
+      "Bash(git add:*)"
+    ]
+  }
+}

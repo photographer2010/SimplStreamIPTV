@@ -191,13 +191,15 @@ class DetailViewModel @Inject constructor(
                     contentId = movie.id,
                     title = movie.title,
                     mediaType = MediaType.MOVIE,
+                    imdbId = movie.imdbId,
                     sources = sources,
-                    resumePosition = _uiState.value.watchHistory?.watchPosition ?: 0
+                    resumePosition = _uiState.value.watchHistory?.watchPosition ?: 0,
+                    posterUrl = movie.posterUrl
                 )
             )
         }
     }
-    
+
     fun playEpisode(episode: Episode) {
         val tvShow = _uiState.value.tvShowDetail ?: return
         val sources = contentRepository.getVideoSources(
@@ -214,11 +216,13 @@ class DetailViewModel @Inject constructor(
                     contentId = tvShow.id,
                     title = "${tvShow.name} - ${episode.episodeCode}",
                     mediaType = MediaType.TV,
+                    imdbId = tvShow.imdbId,
                     sources = sources,
                     seasonNumber = episode.seasonNumber,
                     episodeNumber = episode.episodeNumber,
                     episodeName = episode.name,
-                    resumePosition = 0 // Could check episode-specific history
+                    resumePosition = 0, // Could check episode-specific history
+                    posterUrl = tvShow.posterUrl
                 )
             )
         }
@@ -285,11 +289,13 @@ sealed class DetailEvent {
         val contentId: Int,
         val title: String,
         val mediaType: MediaType,
+        val imdbId: String? = null,
         val sources: List<VideoSource>,
         val seasonNumber: Int? = null,
         val episodeNumber: Int? = null,
         val episodeName: String? = null,
-        val resumePosition: Long = 0
+        val resumePosition: Long = 0,
+        val posterUrl: String? = null
     ) : DetailEvent()
     
     data object AddedToWatchlist : DetailEvent()

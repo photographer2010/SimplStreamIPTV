@@ -40,7 +40,6 @@ class StreamExtractor @Inject constructor(
                 when (serverId) {
                     VideoServerId.MOVIES111 -> extract111Movies(embedUrl)
                     VideoServerId.VIDNEST -> extractVidNest(embedUrl)
-                    VideoServerId.VIDSRC -> extractVidSrc(embedUrl)
                     VideoServerId.VIDLINK -> extractVidLink(embedUrl)
                 }
             } catch (e: Exception) {
@@ -145,37 +144,6 @@ class StreamExtractor @Inject constructor(
                     return StreamResult(
                         streamUrl = streamUrl,
                         headers = mapOf("Referer" to embedUrl),
-                        isHls = streamUrl.contains(".m3u8")
-                    )
-                }
-            }
-        }
-        
-        return null
-    }
-    
-    private fun extractVidSrc(embedUrl: String): StreamResult? {
-        val html = fetchPage(embedUrl, mapOf("Referer" to "https://vidsrc.me/")) ?: return null
-        
-        // VidSrc uses various player implementations
-        val patterns = listOf(
-            Pattern.compile("""["']?(?:file|src|source)["']?\s*[:=]\s*["'](https?://[^"']+\.m3u8[^"']*)["']""", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("""data-src=["'](https?://[^"']+)["']""", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("""Playerjs\(\{[^}]*file\s*:\s*["'](https?://[^"']+)["']""", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("""(https?://[^"'\s<>]+\.m3u8(?:\?[^"'\s<>]*)?)""", Pattern.CASE_INSENSITIVE)
-        )
-        
-        for (pattern in patterns) {
-            val matcher = pattern.matcher(html)
-            if (matcher.find()) {
-                val streamUrl = matcher.group(1)?.replace("\\", "") ?: continue
-                if (streamUrl.isNotEmpty() && !streamUrl.contains("advertisement")) {
-                    return StreamResult(
-                        streamUrl = streamUrl,
-                        headers = mapOf(
-                            "Referer" to embedUrl,
-                            "Origin" to "https://vidsrc.me"
-                        ),
                         isHls = streamUrl.contains(".m3u8")
                     )
                 }

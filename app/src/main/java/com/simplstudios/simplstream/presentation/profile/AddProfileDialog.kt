@@ -100,10 +100,15 @@ class AddProfileDialog(
     
     override fun onStart() {
         super.onStart()
-        dialog?.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        // Set dialog size - fixed width for TV screens
+        dialog?.window?.apply {
+            // Convert 580dp to pixels for a proper width
+            val widthDp = 580
+            val widthPx = (widthDp * resources.displayMetrics.density).toInt()
+
+            setLayout(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setGravity(android.view.Gravity.CENTER)
+        }
     }
 }
 

@@ -205,7 +205,6 @@ data class Episode(
 enum class VideoServerId {
     MOVIES111,   // Server Alpha
     VIDNEST,     // Server Dot (least ads)
-    VIDSRC,      // Server Canteen
     VIDLINK      // Server Omega
 }
 
@@ -226,7 +225,6 @@ data class VideoSource(
         fun getDisplayName(id: VideoServerId): String = when (id) {
             VideoServerId.MOVIES111 -> "Server Alpha"
             VideoServerId.VIDNEST -> "Server Dot"
-            VideoServerId.VIDSRC -> "Server Canteen"
             VideoServerId.VIDLINK -> "Server Omega"
         }
         
@@ -234,7 +232,6 @@ data class VideoSource(
         fun getDescription(id: VideoServerId): String = when (id) {
             VideoServerId.MOVIES111 -> ""
             VideoServerId.VIDNEST -> "(least ads)"
-            VideoServerId.VIDSRC -> ""
             VideoServerId.VIDLINK -> ""
         }
     }

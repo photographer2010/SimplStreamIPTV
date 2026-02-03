@@ -26,13 +26,14 @@
                 android:scaleType="centerCrop"
                 tools:background="@color/background_tertiary" />
 
-            <!-- Type Indicator -->
+            <!-- Type Indicator (hidden) -->
             <View
                 android:id="@+id/type_indicator"
                 android:layout_width="4dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="start"
-                android:background="@color/simpl_blue" />
+                android:background="@color/simpl_blue"
+                android:visibility="gone" />
 
             <!-- Rating Badge -->
             <TextView
@@ -47,7 +48,7 @@
                 android:textColor="@color/star_yellow"
                 android:textSize="12sp"
                 android:fontFamily="@font/outfit_medium"
-                tools:text="★ 8.5" />
+                tools:text="8.5" />
 
         </FrameLayout>
 

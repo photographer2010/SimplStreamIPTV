@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Add profile button with dashed border - No solid border on focus -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="#332563EB" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="#0D0D0D" />
+            <stroke
+                android:width="2dp"
+                android:dashWidth="8dp"
+                android:dashGap="4dp"
+                android:color="#444444" />
+        </shape>
+    </item>
+</selector>

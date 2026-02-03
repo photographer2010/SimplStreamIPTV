@@ -5,7 +5,13 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.simplstudios.simplstream.data.repository.StreamRepository
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * SimplStream Application
@@ -14,8 +20,23 @@ import dagger.hilt.android.HiltAndroidApp
 @HiltAndroidApp
 class SimplStreamApp : Application(), ImageLoaderFactory {
 
+    @Inject
+    lateinit var streamRepository: StreamRepository
+    
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
+        
+        // Pre-warm the SimplStream API on Render to avoid cold start delays
+        // This runs in background and doesn't block app startup
+        applicationScope.launch {
+            try {
+                streamRepository.healthCheck()
+            } catch (e: Exception) {
+                // Ignore errors - this is just a pre-warm
+            }
+        }
     }
 
     // Configure Coil image loader for optimal TV performance
