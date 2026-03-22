@@ -1,192 +1,154 @@
 <div align="center">
 
-# 🎬 SimplStream
+# SimplStreamTV
 
-### *It's not just streaming, it's SimplStream.*
+### *The Future of Streaming. No Limits. No Ads. No Competition.*
 
-## Donate to [💲CashApp💲](https://cash.app/$simplstudiosofficial)
+## Donate to [CashApp](https://cash.app/$simplstudiosofficial)
 
 ---
 
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Android](https://img.shields.io/badge/Android_TV-4.0-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/SimplStudios/SimplStreamTV/releases)
+[![Fire TV](https://img.shields.io/badge/Fire_TV-Compatible-FF9900?style=for-the-badge&logo=amazon&logoColor=white)](https://github.com/SimplStudios/SimplStreamTV/releases)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 
-**A beautiful, modern streaming platform with a Hulu-inspired UI**
+**More content than Netflix, Hulu, Disney+, and Prime Video combined — completely free.**
 
-[🚀 Live Demo](https://simplstream.vercel.app) · [📱 Download App](https://github.com/SimplStudios/SimplStreamTV/releases) · [🐛 Report Bug](https://github.com/SimplStudios/SimplStreamTV/issues)
+[Download Now](https://github.com/SimplStudios/SimplStreamTV/releases) · [Report Bug](https://github.com/SimplStudios/SimplStreamTV/issues)
 
-[💲CashApp](https://cash.app/$simplstudiosofficial)
+[CashApp](https://cash.app/$simplstudiosofficial)
 
 </div>
 
 ---
 
-## ✨ Features
+## Why SimplStreamTV?
 
-### 🎥 **Content Discovery**
-| Feature | Description |
-|---------|-------------|
-| 🔥 **Trending Content** | Browse what's popular right now with real-time TMDB data |
-| 🎭 **Genre Browsing** | Explore Action, Comedy, Drama, Horror, Sci-Fi & more |
-| 🔍 **Smart Search** | AI-powered search with filters for year, rating, and genre |
-| 🎲 **Surprise Me** | Let SimplStream pick something perfect for your mood |
-| 📺 **Live TV** | 40+ live channels including news, sports, movies & music |
+Every other streaming service wants your money. They lock content behind paywalls, shove ads in your face, and split their libraries across five different subscriptions. **SimplStreamTV ends that.**
 
-### 👤 **User Experience**
-| Feature | Description |
-|---------|-------------|
-| 👨‍👩‍👧‍👦 **Multiple Profiles** | Create up to 5 profiles per account with custom avatars |
-| 🔒 **Profile Locks** | PIN protection for individual profiles |
-| 📋 **My List** | Save your favorite movies and shows for later |
-| 🕐 **Watch History** | Continue where you left off across all devices |
-| 🌙 **Dark/Light Mode** | Beautiful themes that adapt to your preference |
+We give you **everything** — every movie, every TV show, every genre — in one place. No subscriptions. No ads. No buffering. No compromise.
 
-### 🎨 **Modern Design**
-| Feature | Description |
-|---------|-------------|
-| 💎 **Hulu-Inspired UI** | Clean, modern interface with glass morphism effects |
-| 🔵 **Blue Accent Theme** | Elegant color scheme throughout the app |
-| 📱 **Mobile Optimized** | PWA-ready with native-like mobile navigation |
-| 🖼️ **Full-Width Hero** | Stunning 16:9 detail pages with backdrop imagery |
-| ✨ **Smooth Animations** | Polished transitions and hover effects |
-
-### 🛠️ **Technical Features**
-| Feature | Description |
-|---------|-------------|
-| ⚡ **Lightning Fast** | Built with Vite for instant hot module replacement |
-| 🎯 **Type Safe** | Full TypeScript support for reliability |
-| 📦 **Component Library** | Built on shadcn/ui for consistent design |
-| 💾 **Local Storage** | Profiles and preferences persist locally |
-| 🔗 **TMDB Integration** | Real movie & TV data from The Movie Database |
+> **More content than Netflix, Hulu, Disney+, and Prime Video combined.**
+> That's not marketing. That's a fact.
 
 ---
 
-## 📸 Screenshots
+## What You Get
+
+| | Feature | What It Means |
+|---|---------|---------------|
+| **Unlimited Library** | Every movie and TV show you can think of | Stop paying for 4 different services |
+| **Zero Ads** | Not a single ad. Ever. | Uninterrupted viewing, always |
+| **Zero Lag** | Adaptive streaming with instant playback | Starts playing before you finish clicking |
+| **24/7 Availability** | Always on, always streaming | No maintenance windows, no downtime |
+| **AI-Powered** | Smart recommendations that actually work | "For You" learns what you love |
+| **Fire TV Ready** | Built for the big screen from day one | Optimized for remote control and living room viewing |
+| **Multiple Profiles** | Up to 5 profiles with custom avatars | Everyone in the house gets their own space |
+| **Kids Mode** | Safe content filtering with PIN protection | Parents can relax |
+| **My List** | Save anything, watch anytime | Your personal watchlist across all profiles |
+| **Continue Watching** | Pick up right where you left off | Never lose your place |
+
+---
+
+## The SimplStream Experience
 
 <div align="center">
 
-| Home | Detail | Live TV |
-|:---:|:---:|:---:|
-| Modern homepage with hero banner | Full-width detail pages | 40+ live channels |
+### v4.0 — Current
+
+| Home | Profile Selection |
+|:---:|:---:|
+| ![Home](screenshot_back_to_home.png) | ![Profiles](ss_profile_new.png) |
+| Cinematic hero banners with instant access | Netflix-style profile switching with avatars |
+
+---
+
+### v1.0 — Where It Started
+
+| Browse | Movies |
+|:---:|:---:|
+| ![Browse](screenshot_btn_focused2.png) | ![Movies](screenshot_back_to_movies.png) |
+
+*From a basic browser to a premium streaming platform. Same mission, completely rebuilt.*
 
 </div>
 
 ---
 
-## 🚀 Quick Start
+## Built for Your Living Room
 
-### Prerequisites
-- Node.js 18+ 
-- npm, yarn, pnpm, or bun
+SimplStreamTV isn't a phone app stretched to fit a TV. It's a **native Android TV application** designed from the ground up for the big screen experience:
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/SimplStudios/SimplStreamTV.git
-
-# Navigate to project
-cd SimplStreamTV
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The app will be running at `http://localhost:8080` 🎉
+- **D-pad navigation** that feels natural and responsive
+- **Fire TV Stick, Fire TV Cube, Chromecast with Google TV** — all supported
+- **10-foot UI** designed to look stunning from across the room
+- **Cinematic startup animation** that sets the tone every time you launch
+- **Hardware-accelerated playback** for smooth, buffer-free streaming
 
 ---
 
-## 📱 Mobile App
+## For You — AI That Actually Knows You
 
-Download the Android app from our [Releases Page](https://github.com/SimplStudios/SimplStreamTV/releases).
-
-> **Note:** Enable "Install from Unknown Sources" in Android settings to install the APK.
+Most "recommendation engines" show you the same 20 titles on repeat. SimplStream's **For You** page analyzes your viewing patterns, genre preferences, and watch history to surface content you'll genuinely enjoy — not content that paid for placement.
 
 ---
 
-## 🛠️ Tech Stack
+## Technical Excellence
 
-<div align="center">
+Under the hood, SimplStreamTV v4.0 is a complete architectural overhaul:
 
-| Category | Technology |
-|----------|------------|
-| ⚛️ **Framework** | React 18 |
-| 📝 **Language** | TypeScript |
-| 🎨 **Styling** | Tailwind CSS |
-| 🧩 **Components** | shadcn/ui + Radix UI |
-| ⚡ **Build Tool** | Vite |
-| 🎬 **Data** | TMDB API |
-| 🔤 **Fonts** | Rubik |
+| Component | Technology |
+|-----------|------------|
+| **Language** | Kotlin 2.0 with Coroutines & Flow |
+| **Architecture** | MVVM + Clean Architecture + Repository Pattern |
+| **UI Framework** | Custom Netflix-style UI built on AndroidX Leanback |
+| **Video Engine** | ExoPlayer (Media3) with adaptive HLS streaming |
+| **Dependency Injection** | Hilt (Dagger) |
+| **Networking** | Retrofit + OkHttp + Moshi |
+| **Image Loading** | Coil with memory & disk caching |
+| **Local Storage** | Room Database + DataStore |
+| **Navigation** | Jetpack Navigation Component |
+| **Fonts** | Custom Outfit & Plus Jakarta Sans typefaces |
 
-</div>
-
----
-
-## 📁 Project Structure
-
-```
-SimplStream/
-├── public/              # Static assets
-├── src/
-│   ├── components/      # React components
-│   │   ├── ui/          # shadcn/ui components
-│   │   ├── HomeView.tsx
-│   │   ├── DetailView.tsx
-│   │   ├── LiveTVView.tsx
-│   │   ├── PlayerView.tsx
-│   │   └── ...
-│   ├── context/         # React context providers
-│   ├── hooks/           # Custom React hooks
-│   ├── lib/             # Utility functions
-│   │   ├── tmdb.ts      # TMDB API integration
-│   │   ├── liveChannels.ts
-│   │   └── ...
-│   └── pages/           # Page components
-├── index.html
-├── tailwind.config.ts
-├── vite.config.ts
-└── package.json
-```
+### Key Engineering Achievements in v4.0
+- **Native video player** replacing WebView — zero ads, full playback control, subtitle support
+- **Smart content extraction** with multi-provider fallback system
+- **Parental controls** with SHA-256 encrypted PIN storage
+- **Profile system** with isolated watchlists, history, and preferences per user
+- **Adaptive streaming** with automatic quality selection based on network conditions
+- **Cinematic splash animation** with choreographed text reveals and ambient lighting effects
+- **Custom card system** with focus-aware glow effects optimized for TV remote navigation
 
 ---
 
-## 🤝 Contributing
+## Download
 
-Contributions are welcome! Feel free to:
+Head to the [Releases Page](https://github.com/SimplStudios/SimplStreamTV/releases) and grab the latest APK.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+> **Note:** Enable "Install from Unknown Sources" in your Android TV settings to install.
 
 ---
 
-## 📄 License
+## License
 
-This project is for educational and personal use only. SimplStream does not host, store, or distribute any copyrighted content. All media information is provided by [TMDB](https://www.themoviedb.org/).
+This project is for educational and personal use only. SimplStreamTV does not host, store, or distribute any copyrighted content. All media metadata is provided by [TMDB](https://www.themoviedb.org/).
 
 ---
 
-## 📧 Contact
+## Contact
 
-**SimplStudios** - simplstudios@protonmail.com
+**SimplStudios** — simplstudios@protonmail.com
 
-Project Link: [https://github.com/SimplStudios/SimplStreamTV](https://github.com/SimplStudios/SimplStreamTV)
+Project: [https://github.com/SimplStudios/SimplStreamTV](https://github.com/SimplStudios/SimplStreamTV)
 
-Donation [https://cash.app/$simplstudiosofficial]
+Donate: [https://cash.app/$simplstudiosofficial](https://cash.app/$simplstudiosofficial)
 
 ---
 
 <div align="center">
 
-**Made with ❤️ by SimplStudios**
+**Made with intensity by SimplStudios**
 
-*It's not just streaming, it's SimplStream.*
+*It's not just streaming. It's SimplStream.*
 
 </div>
