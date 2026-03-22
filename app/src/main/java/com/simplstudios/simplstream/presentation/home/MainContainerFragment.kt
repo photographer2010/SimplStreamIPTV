@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -38,7 +39,10 @@ class MainContainerFragment : Fragment() {
     
     private var currentTab: NavTab = NavTab.HOME
     private var allTabs: List<TextView> = emptyList()
-    
+
+    // Tab history for smart back navigation
+    private val tabHistory = ArrayDeque<NavTab>()
+
     // Track if header is visible for scroll behavior
     private var isHeaderVisible = true
     
@@ -60,7 +64,8 @@ class MainContainerFragment : Fragment() {
         bindViews(view)
         setupNavigation()
         setupKeyNavigation(view)
-        
+        setupBackNavigation()
+
         // Load home by default
         navigateToTab(NavTab.HOME)
     }
@@ -100,36 +105,18 @@ class MainContainerFragment : Fragment() {
             findNavController().navigate(R.id.action_main_to_settings)
         }
         
-        // Focus change styling for tabs
+        // Focus change styling for tabs — no scale, just alpha
         allTabs.forEach { tab ->
             tab.setOnFocusChangeListener { v, hasFocus ->
-                val textView = v as TextView
-                if (hasFocus) {
-                    textView.animate()
-                        .scaleX(1.1f)
-                        .scaleY(1.1f)
-                        .setDuration(150)
-                        .start()
-                } else {
-                    textView.animate()
-                        .scaleX(1.0f)
-                        .scaleY(1.0f)
-                        .setDuration(150)
-                        .start()
-                }
+                v.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
             }
         }
-        
-        // Focus change styling for icon buttons
+
+        // Focus change styling for icon buttons — no scale, just alpha + bg
         listOf(btnSearch, btnProfile).forEach { btn ->
             btn.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) {
-                    v.animate().scaleX(1.2f).scaleY(1.2f).setDuration(150).start()
-                    v.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_circle_button_focus)
-                } else {
-                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-                    v.background = null
-                }
+                v.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+                v.background = if (hasFocus) ContextCompat.getDrawable(requireContext(), R.drawable.bg_circle_button_focus) else null
             }
         }
     }
@@ -171,11 +158,40 @@ class MainContainerFragment : Fragment() {
         return false
     }
     
-    private fun navigateToTab(tab: NavTab) {
+    private fun setupBackNavigation() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (tabHistory.isNotEmpty()) {
+                        // Go back to previous tab
+                        val previousTab = tabHistory.removeLast()
+                        navigateToTab(previousTab, addToHistory = false)
+                    } else {
+                        // No tab history — go back to profile selection
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            }
+        )
+    }
+
+    private fun navigateToTab(tab: NavTab, addToHistory: Boolean = true) {
         if (currentTab == tab && childFragmentManager.fragments.isNotEmpty()) {
             return // Already on this tab
         }
-        
+
+        // Push current tab to history (avoid duplicates at the top)
+        if (addToHistory && childFragmentManager.fragments.isNotEmpty()) {
+            if (tabHistory.lastOrNull() != currentTab) {
+                tabHistory.addLast(currentTab)
+            }
+            // Keep history reasonable — max 10 entries
+            while (tabHistory.size > 10) tabHistory.removeFirst()
+        }
+
         currentTab = tab
         updateTabStyles()
         
@@ -193,8 +209,8 @@ class MainContainerFragment : Fragment() {
         
         childFragmentManager.beginTransaction()
             .setCustomAnimations(
-                android.R.anim.fade_in,
-                android.R.anim.fade_out
+                R.anim.fade_in_slow,
+                R.anim.fade_out_slow
             )
             .replace(R.id.content_container, fragment)
             .commit()

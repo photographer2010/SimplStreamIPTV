@@ -55,10 +55,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private var selectedColorIndex: Int = 0
     private var hasPin: Boolean = false
     private var isViewsBound = false
+    // Track if kids mode was changed by the user (not by loadProfile)
+    private var kidsModeChangedByUser = false
+    private var suppressKidsModeListener = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         try {
             bindViews(view)
             isViewsBound = true
@@ -93,7 +96,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private fun setupColorSelector() {
         colorSelector.removeAllViews()
-        
+
         Profile.AVATAR_COLORS.forEachIndexed { index, color ->
             val colorView = View(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(48.dpToPx(), 48.dpToPx()).apply {
@@ -105,14 +108,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }
                 isFocusable = true
                 isFocusableInTouchMode = true
-                
+
                 setOnClickListener {
                     selectColor(index)
                 }
-                
+
                 setOnFocusChangeListener { v, hasFocus ->
-                    v.scaleX = if (hasFocus) 1.2f else 1.0f
-                    v.scaleY = if (hasFocus) 1.2f else 1.0f
+                    v.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
                 }
             }
             colorSelector.addView(colorView)
@@ -124,7 +126,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         if (index < Profile.AVATAR_COLORS.size) {
             updateAvatarColor(Profile.AVATAR_COLORS[index])
         }
-        
+
         // Update selection indicators
         for (i in 0 until colorSelector.childCount) {
             val child = colorSelector.getChildAt(i)
@@ -140,13 +142,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     }
 
     private fun setupClickListeners() {
-        // Kids mode row
+        // Kids mode row — requires parental PIN
         kidsModeRow.setOnClickListener {
-            kidsModeSwitch.isChecked = !kidsModeSwitch.isChecked
+            handleKidsModeToggle()
         }
-        
+
+        // Intercept switch changes — only allow if authorized
         kidsModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressKidsModeListener) return@setOnCheckedChangeListener
             kidsBadge.isVisible = isChecked
+            kidsModeChangedByUser = true
         }
 
         // Change PIN
@@ -185,6 +190,211 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 profileNameDisplay.text = nameInput.text.toString().ifEmpty { "Profile" }
             }
         }
+    }
+
+    /**
+     * Toggle kids mode — requires parental PIN.
+     * If enabling: require parental PIN (create if not set).
+     * If disabling: require parental PIN verification.
+     */
+    private fun handleKidsModeToggle() {
+        val wantToEnable = !kidsModeSwitch.isChecked
+
+        if (wantToEnable) {
+            // Enabling kids mode — need parental PIN
+            viewModel.hasParentalPin { hasParentalPin ->
+                if (hasParentalPin) {
+                    // Verify existing parental PIN
+                    showParentalPinVerification("Enable Kids Mode") {
+                        suppressKidsModeListener = true
+                        kidsModeSwitch.isChecked = true
+                        suppressKidsModeListener = false
+                        kidsBadge.isVisible = true
+                        kidsModeChangedByUser = true
+                    }
+                } else {
+                    // No parental PIN set — require creating one first
+                    showSetParentalPinDialog {
+                        suppressKidsModeListener = true
+                        kidsModeSwitch.isChecked = true
+                        suppressKidsModeListener = false
+                        kidsBadge.isVisible = true
+                        kidsModeChangedByUser = true
+                    }
+                }
+            }
+        } else {
+            // Disabling kids mode — always requires parental PIN
+            showParentalPinVerification("Disable Kids Mode") {
+                suppressKidsModeListener = true
+                kidsModeSwitch.isChecked = false
+                suppressKidsModeListener = false
+                kidsBadge.isVisible = false
+                kidsModeChangedByUser = true
+            }
+        }
+    }
+
+    /**
+     * Show a dialog to verify the parental PIN before allowing an action.
+     */
+    private fun showParentalPinVerification(title: String, onVerified: () -> Unit) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_pin_verify_delete, null)
+        val pinInput = dialogView.findViewById<EditText>(R.id.pin_input)
+        val errorText = dialogView.findViewById<TextView>(R.id.error_text)
+
+        // Update title text
+        dialogView.findViewById<TextView>(android.R.id.text1)?.text = title
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setTitle(title)
+            .setMessage("Enter the parental PIN to continue")
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<View>(R.id.cancel_button).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<View>(R.id.verify_button).setOnClickListener {
+            val enteredPin = pinInput.text.toString()
+            if (enteredPin.length != 4) {
+                errorText.text = "PIN must be 4 digits"
+                errorText.isVisible = true
+                return@setOnClickListener
+            }
+
+            viewModel.verifyParentalPin(
+                enteredPin,
+                {
+                    dialog.dismiss()
+                    onVerified()
+                },
+                {
+                    errorText.text = "Incorrect parental PIN"
+                    errorText.isVisible = true
+                    pinInput.text?.clear()
+                }
+            )
+        }
+
+        dialog.show()
+        pinInput.requestFocus()
+    }
+
+    /**
+     * Show dialog to create a new parental PIN.
+     */
+    private fun showSetParentalPinDialog(onPinSet: (() -> Unit)? = null) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_parental_pin, null)
+        val titleText = dialogView.findViewById<TextView>(R.id.dialog_title)
+        val subtitleText = dialogView.findViewById<TextView>(R.id.dialog_subtitle)
+        val currentPinContainer = dialogView.findViewById<View>(R.id.current_pin_container)
+        val newPinInput = dialogView.findViewById<EditText>(R.id.new_pin_input)
+        val confirmPinInput = dialogView.findViewById<EditText>(R.id.confirm_pin_input)
+        val errorText = dialogView.findViewById<TextView>(R.id.error_text)
+
+        titleText.text = "Set Parental PIN"
+        subtitleText.text = "Create a 4-digit PIN to control Kids Mode, profile deletion, and parental settings."
+        currentPinContainer.isVisible = false
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<View>(R.id.cancel_button).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<View>(R.id.save_button).setOnClickListener {
+            val newPin = newPinInput.text.toString()
+            val confirmPin = confirmPinInput.text.toString()
+
+            if (newPin.length != 4) {
+                errorText.text = "PIN must be 4 digits"
+                errorText.isVisible = true
+                return@setOnClickListener
+            }
+            if (newPin != confirmPin) {
+                errorText.text = "PINs do not match"
+                errorText.isVisible = true
+                return@setOnClickListener
+            }
+
+            viewModel.setParentalPin(newPin)
+            Toast.makeText(requireContext(), "Parental PIN set", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+            onPinSet?.invoke()
+        }
+
+        dialog.show()
+        newPinInput.requestFocus()
+    }
+
+    /**
+     * Show dialog to change the existing parental PIN.
+     */
+    private fun showChangeParentalPinDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_parental_pin, null)
+        val titleText = dialogView.findViewById<TextView>(R.id.dialog_title)
+        val subtitleText = dialogView.findViewById<TextView>(R.id.dialog_subtitle)
+        val currentPinContainer = dialogView.findViewById<View>(R.id.current_pin_container)
+        val currentPinInput = dialogView.findViewById<EditText>(R.id.current_pin_input)
+        val newPinLabel = dialogView.findViewById<TextView>(R.id.new_pin_label)
+        val newPinInput = dialogView.findViewById<EditText>(R.id.new_pin_input)
+        val confirmPinInput = dialogView.findViewById<EditText>(R.id.confirm_pin_input)
+        val errorText = dialogView.findViewById<TextView>(R.id.error_text)
+
+        titleText.text = "Change Parental PIN"
+        subtitleText.text = "Enter your current parental PIN, then set a new one."
+        currentPinContainer.isVisible = true
+        newPinLabel.text = "New Parental PIN"
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<View>(R.id.cancel_button).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<View>(R.id.save_button).setOnClickListener {
+            val currentPin = currentPinInput.text.toString()
+            val newPin = newPinInput.text.toString()
+            val confirmPin = confirmPinInput.text.toString()
+
+            if (currentPin.length != 4) {
+                errorText.text = "Current PIN must be 4 digits"
+                errorText.isVisible = true
+                return@setOnClickListener
+            }
+            if (newPin.length != 4) {
+                errorText.text = "New PIN must be 4 digits"
+                errorText.isVisible = true
+                return@setOnClickListener
+            }
+            if (newPin != confirmPin) {
+                errorText.text = "PINs do not match"
+                errorText.isVisible = true
+                return@setOnClickListener
+            }
+
+            viewModel.changeParentalPin(
+                currentPin, newPin,
+                {
+                    Toast.makeText(requireContext(), "Parental PIN updated", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                },
+                {
+                    errorText.text = "Current parental PIN is incorrect"
+                    errorText.isVisible = true
+                    currentPinInput.text?.clear()
+                }
+            )
+        }
+
+        dialog.show()
+        currentPinInput.requestFocus()
     }
 
     private fun observeState() {
@@ -230,19 +440,22 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private fun loadProfile(profile: Profile) {
         if (currentProfile?.id == profile.id) return
         currentProfile = profile
-        
+
         // Set name
         nameInput.setText(profile.name)
         profileNameDisplay.text = profile.name
-        
+
         // Set color
         selectedColorIndex = profile.avatarIndex
         selectColor(selectedColorIndex)
-        
-        // Set kids mode
+
+        // Set kids mode (suppress listener to avoid triggering PIN dialog)
+        suppressKidsModeListener = true
         kidsModeSwitch.isChecked = profile.isKidsProfile
         kidsBadge.isVisible = profile.isKidsProfile
-        
+        suppressKidsModeListener = false
+        kidsModeChangedByUser = false
+
         // Set PIN status
         hasPin = profile.hasPin
         pinStatusContainer.isVisible = hasPin
@@ -263,6 +476,25 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         currentPinContainer.isVisible = hasPin
         removePinButton.isVisible = hasPin
 
+        // If this is a kids profile, require parental PIN to change their own PIN
+        if (currentProfile?.isKidsProfile == true) {
+            showParentalPinVerification("Manage Profile PIN") {
+                showChangePinDialogInternal(dialogView, currentPinInput, newPinInput, confirmPinInput, currentPinContainer, errorText, removePinButton)
+            }
+        } else {
+            showChangePinDialogInternal(dialogView, currentPinInput, newPinInput, confirmPinInput, currentPinContainer, errorText, removePinButton)
+        }
+    }
+
+    private fun showChangePinDialogInternal(
+        dialogView: View,
+        currentPinInput: EditText,
+        newPinInput: EditText,
+        confirmPinInput: EditText,
+        currentPinContainer: View,
+        errorText: TextView,
+        removePinButton: View
+    ) {
         val dialog = AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
             .setView(dialogView)
             .create()
@@ -300,7 +532,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         dialogView.findViewById<View>(R.id.save_button).setOnClickListener {
             errorText.isVisible = false
-            
+
             val newPin = newPinInput.text.toString()
             val confirmPin = confirmPinInput.text.toString()
 
@@ -370,8 +602,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private fun handleDeleteProfile() {
         val profile = currentProfile ?: return
-        
-        if (profile.hasPin) {
+
+        if (profile.isKidsProfile) {
+            // Kids profile — always require parental PIN for deletion
+            showParentalPinVerification("Delete Kids Profile") {
+                showDeleteConfirmation(profile)
+            }
+        } else if (profile.hasPin) {
             showDeletePinVerification(profile)
         } else {
             showDeleteConfirmation(profile)
@@ -393,7 +630,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         dialogView.findViewById<View>(R.id.verify_button).setOnClickListener {
             val enteredPin = pinInput.text.toString()
-            
+
             if (enteredPin.length != 4) {
                 errorText.text = "PIN must be 4 digits"
                 errorText.isVisible = true
@@ -438,12 +675,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             return
         }
 
+        val isKids = kidsModeSwitch.isChecked
+
+        // If kids mode was changed, this was already verified via parental PIN
+        // (handleKidsModeToggle handles the PIN check before allowing the toggle)
         viewModel.updateProfileDetails(
             profileId = profile.id,
             name = name,
             avatarIndex = selectedColorIndex,
             newPin = null,
-            isKidsProfile = kidsModeSwitch.isChecked,
+            isKidsProfile = isKids,
             clearPin = false
         )
     }

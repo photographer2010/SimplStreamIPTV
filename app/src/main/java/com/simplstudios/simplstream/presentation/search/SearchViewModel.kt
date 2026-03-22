@@ -30,12 +30,25 @@ class SearchViewModel @Inject constructor(
     private var searchJob: Job? = null
     private var currentPage = 1
     private var hasMorePages = true
-    
+    private var isKidsMode = false
+
     init {
+        observeKidsMode()
         loadGenres()
         setupSearchDebounce()
         loadLastQuery()
     }
+
+    private fun observeKidsMode() {
+        viewModelScope.launch {
+            sessionManager.isKidsProfile.collect { isKids ->
+                isKidsMode = isKids
+            }
+        }
+    }
+
+    private fun List<Content>.applyKidsFilter(): List<Content> =
+        if (isKidsMode) filter { it.isKidsSafe } else this
     
     private fun loadLastQuery() {
         viewModelScope.launch {
@@ -104,14 +117,15 @@ class SearchViewModel @Inject constructor(
             result.onSuccess { pagedContent ->
                 hasMorePages = pagedContent.hasMore
                 currentPage++
-                
+
+                val filtered = pagedContent.items.applyKidsFilter()
                 val newResults = if (reset) {
-                    pagedContent.items
+                    filtered
                 } else {
-                    _uiState.value.searchResults + pagedContent.items
+                    _uiState.value.searchResults + filtered
                 }
-                
-                _uiState.update { 
+
+                _uiState.update {
                     it.copy(
                         searchResults = newResults,
                         isSearching = false,
@@ -119,10 +133,10 @@ class SearchViewModel @Inject constructor(
                         error = null
                     )
                 }
-                
+
                 // Save search query
                 sessionManager.setLastSearchQuery(query)
-                
+
             }.onFailure { e ->
                 _uiState.update { 
                     it.copy(
@@ -183,16 +197,16 @@ class SearchViewModel @Inject constructor(
             result.onSuccess { pagedContent ->
                 hasMorePages = pagedContent.hasMore
                 currentPage++
-                
-                _uiState.update { 
+
+                _uiState.update {
                     it.copy(
-                        searchResults = pagedContent.items,
+                        searchResults = pagedContent.items.applyKidsFilter(),
                         isSearching = false,
                         hasSearched = true
                     )
                 }
             }.onFailure { e ->
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isSearching = false,
                         error = e.message
@@ -201,32 +215,32 @@ class SearchViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun browseGenre(genre: Genre, mediaType: MediaType) {
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isSearching = true, 
+                    isSearching = true,
                     browsingGenre = genre,
                     searchResults = emptyList(),
                     hasSearched = true
                 )
             }
-            
+
             val result = when (mediaType) {
                 MediaType.MOVIE -> contentRepository.discoverMovies(genreId = genre.id)
                 MediaType.TV -> contentRepository.discoverTvShows(genreId = genre.id)
             }
-            
+
             result.onSuccess { pagedContent ->
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
-                        searchResults = pagedContent.items,
+                        searchResults = pagedContent.items.applyKidsFilter(),
                         isSearching = false
                     )
                 }
             }.onFailure { e ->
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isSearching = false,
                         error = e.message

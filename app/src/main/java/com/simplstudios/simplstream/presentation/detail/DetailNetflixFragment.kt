@@ -139,11 +139,9 @@ class DetailNetflixFragment : Fragment() {
             findNavController().navigateUp()
         }
         
-        // Back button focus handling
+        // Back button focus handling — no scale, just alpha
         backButton.setOnFocusChangeListener { v, hasFocus ->
-            v.alpha = if (hasFocus) 1f else 0.7f
-            val scale = if (hasFocus) 1.1f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+            v.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
         }
         
         // D-pad back key
@@ -175,11 +173,10 @@ class DetailNetflixFragment : Fragment() {
             viewModel.toggleWatchlist()
         }
         
-        // Focus handling for buttons
+        // Focus handling for buttons — no scale, just alpha
         listOf(playButton, watchlistButton).forEach { btn ->
             btn.setOnFocusChangeListener { v, hasFocus ->
-                val scale = if (hasFocus) 1.05f else 1f
-                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+                v.animate().alpha(if (hasFocus) 1f else 0.8f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
             }
         }
         
@@ -326,10 +323,9 @@ class DetailNetflixFragment : Fragment() {
             } else false
         }
         
-        // Season spinner focus
+        // Season spinner focus — no scale
         seasonSpinner.setOnFocusChangeListener { v, hasFocus ->
-            val scale = if (hasFocus) 1.05f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+            v.animate().alpha(if (hasFocus) 1f else 0.8f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
         }
         
         // Episodes (horizontal scroll)
@@ -496,11 +492,11 @@ class CastNetflixAdapter(
         holder.nameText.text = castMember.name
         holder.characterText.text = castMember.character ?: ""
         
-        // Focus handling
+        // Focus handling — clean, no border
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
             holder.focusRing.isVisible = hasFocus
-            val scale = if (hasFocus) 1.08f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+            val scale = if (hasFocus) 1.02f else 1f
+            v.animate().scaleX(scale).scaleY(scale).alpha(if (hasFocus) 1f else 0.8f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
         }
     }
 
@@ -525,7 +521,6 @@ class EpisodeNetflixAdapter(
         val episodeCode: TextView = view.findViewById(R.id.episode_code)
         val episodeName: TextView = view.findViewById(R.id.episode_name)
         val episodeOverview: TextView = view.findViewById(R.id.episode_overview)
-        val focusBorder: View = view.findViewById(R.id.focus_border)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -536,17 +531,17 @@ class EpisodeNetflixAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val episode = episodes[position]
-        
+
         // Episode still image
         holder.stillImage.load(episode.stillUrl) {
             crossfade(true)
             placeholder(R.drawable.bg_card)
             error(R.drawable.bg_card)
         }
-        
+
         // Episode badge
         holder.episodeBadge.text = "E${episode.episodeNumber}"
-        
+
         // Runtime badge
         episode.runtimeDisplay?.let {
             holder.runtimeBadge.text = it
@@ -554,26 +549,31 @@ class EpisodeNetflixAdapter(
         } ?: run {
             holder.runtimeBadge.isVisible = false
         }
-        
+
         // Episode info
         holder.episodeCode.text = "S${String.format("%02d", episode.seasonNumber)} • E${String.format("%02d", episode.episodeNumber)}"
         holder.episodeName.text = episode.name
         holder.episodeOverview.text = episode.overview ?: ""
         holder.episodeOverview.isVisible = !episode.overview.isNullOrBlank()
-        
+
         // Click handler
         holder.itemView.setOnClickListener { onEpisodeClick(episode) }
-        
-        // D-pad focus handling
+
+        // D-pad focus handling — clip to outline to prevent black rect on scale
+        holder.cardContainer.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+        holder.cardContainer.clipToOutline = true
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            holder.focusBorder.isVisible = hasFocus
             holder.playOverlay.isVisible = hasFocus
-            
-            val scale = if (hasFocus) 1.05f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
-            holder.cardContainer.cardElevation = if (hasFocus) 12f else 0f
+
+            val scale = if (hasFocus) 1.03f else 1f
+            v.animate()
+                .scaleX(scale).scaleY(scale)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
         }
-        
+
         // D-pad enter key
         holder.itemView.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN &&
@@ -603,7 +603,6 @@ class RecommendationNetflixAdapter(
         val titleText: TextView = view.findViewById(R.id.title_text)
         val metadataText: TextView = view.findViewById(R.id.metadata_text)
         val matchText: TextView = view.findViewById(R.id.match_text)
-        val focusBorder: View = view.findViewById(R.id.focus_border)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -652,13 +651,17 @@ class RecommendationNetflixAdapter(
         // Click handler
         holder.itemView.setOnClickListener { onContentClick(content) }
         
-        // Focus handling
+        // Focus handling — clip to outline to prevent black rect on scale
+        holder.cardContainer.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+        holder.cardContainer.clipToOutline = true
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            holder.focusBorder.isVisible = hasFocus
-            
-            val scale = if (hasFocus) 1.06f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
-            holder.cardContainer.cardElevation = if (hasFocus) 12f else 0f
+            val scale = if (hasFocus) 1.03f else 1f
+            v.animate()
+                .scaleX(scale).scaleY(scale)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
         }
     }
 

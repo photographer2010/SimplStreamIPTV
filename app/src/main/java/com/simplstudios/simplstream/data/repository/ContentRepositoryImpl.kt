@@ -287,10 +287,11 @@ class ContentRepositoryImpl @Inject constructor(
             backdropUrl = buildImageUrl(backdropPath, BACKDROP_SIZE),
             voteAverage = voteAverage,
             releaseDate = displayDate,
-            mediaType = if (isMovie) MediaType.MOVIE else MediaType.TV
+            mediaType = if (isMovie) MediaType.MOVIE else MediaType.TV,
+            genreIds = genreIds ?: emptyList()
         )
     }
-    
+
     private fun MovieDto.toDomain(): Content {
         return Content(
             id = id,
@@ -300,10 +301,12 @@ class ContentRepositoryImpl @Inject constructor(
             backdropUrl = buildImageUrl(backdropPath, BACKDROP_SIZE),
             voteAverage = voteAverage,
             releaseDate = releaseDate,
-            mediaType = MediaType.MOVIE
+            mediaType = MediaType.MOVIE,
+            genreIds = genreIds ?: emptyList(),
+            adult = adult
         )
     }
-    
+
     private fun TvShowDto.toDomain(): Content {
         return Content(
             id = id,
@@ -313,7 +316,8 @@ class ContentRepositoryImpl @Inject constructor(
             backdropUrl = buildImageUrl(backdropPath, BACKDROP_SIZE),
             voteAverage = voteAverage,
             releaseDate = firstAirDate,
-            mediaType = MediaType.TV
+            mediaType = MediaType.TV,
+            genreIds = genreIds ?: emptyList()
         )
     }
     

@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -29,19 +30,21 @@ class ContentCardPresenter : Presenter() {
         view.isFocusableInTouchMode = true
         
         view.setOnFocusChangeListener { v, hasFocus ->
-            val scale = if (hasFocus) 1.1f else 1.0f
+            val scale = if (hasFocus) 1.02f else 1.0f
             v.animate()
                 .scaleX(scale)
                 .scaleY(scale)
-                .setDuration(150)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(DecelerateInterpolator())
                 .start()
-            
+
             v.isSelected = hasFocus
         }
-        
+
         return ViewHolder(view)
     }
-    
+
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
         val content = item as Content
         val view = viewHolder.view
@@ -91,13 +94,15 @@ class ContinueWatchingCardPresenter : Presenter() {
         view.isFocusableInTouchMode = true
         
         view.setOnFocusChangeListener { v, hasFocus ->
-            val scale = if (hasFocus) 1.08f else 1.0f
+            val scale = if (hasFocus) 1.02f else 1.0f
             v.animate()
                 .scaleX(scale)
                 .scaleY(scale)
-                .setDuration(150)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(DecelerateInterpolator())
                 .start()
-            
+
             v.isSelected = hasFocus
         }
         
@@ -149,8 +154,14 @@ class GenreChipPresenter : Presenter() {
         
         view.setOnFocusChangeListener { v, hasFocus ->
             v.isSelected = hasFocus
-            val scale = if (hasFocus) 1.1f else 1.0f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+            val scale = if (hasFocus) 1.02f else 1.0f
+            v.animate()
+                .scaleX(scale)
+                .scaleY(scale)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
         }
         
         return ViewHolder(view)

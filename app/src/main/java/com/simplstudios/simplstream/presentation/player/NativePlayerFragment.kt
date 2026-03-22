@@ -1,13 +1,17 @@
 package com.simplstudios.simplstream.presentation.player
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
@@ -67,6 +71,9 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
     private lateinit var tryNextButton: Button
     private lateinit var whyButton: Button
     private lateinit var controlsOverlay: View
+    private lateinit var titleRow: View
+    private lateinit var controlsRow: View
+    private lateinit var progressRow: View
     private lateinit var titleText: TextView
     private lateinit var qualityText: TextView
     private lateinit var sourceButton: TextView
@@ -74,7 +81,8 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
     private lateinit var progressSeekbar: SeekBar
     private lateinit var currentTimeText: TextView
     private lateinit var totalTimeText: TextView
-    
+    private lateinit var playPauseIndicator: ImageView
+
     // Playback controls
     private lateinit var playPauseButton: ImageButton
     private lateinit var rewindButton: ImageButton
@@ -132,6 +140,17 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
     private var currentPlayingStreamId: String? = null  // Track which stream we're playing
     private var userHidControls = false  // Track if user manually hid controls with UP button
     private var isPaused = false  // Track if player is paused to keep controls visible
+    private var controlsAnimating = false  // Prevent animation conflicts
+    private var loadingMessageJob: Job? = null  // Rotating loading messages
+
+    // Funny loading messages
+    private val funnyLoadingMessages = listOf(
+        "Bribing the streaming gods...",
+        "Convincing pixels to appear...",
+        "Negotiating with the internet...",
+        "Warming up the flux capacitor...",
+        "Teaching hamsters to run faster..."
+    )
     
     // Quality selection
     private var availableQualities: List<Pair<Int, String>> = emptyList() // height -> label
@@ -197,6 +216,10 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         tryNextButton = view.findViewById(R.id.try_next_button)
         whyButton = view.findViewById(R.id.why_button)
         controlsOverlay = view.findViewById(R.id.controls_overlay)
+        titleRow = view.findViewById(R.id.title_row)
+        controlsRow = view.findViewById(R.id.controls_row)
+        progressRow = view.findViewById(R.id.progress_row)
+        playPauseIndicator = view.findViewById(R.id.play_pause_indicator)
         titleText = view.findViewById(R.id.title_text)
         qualityText = view.findViewById(R.id.quality_text)
         sourceButton = view.findViewById(R.id.source_button)
@@ -242,6 +265,9 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         nextEpisodeThumbnail = view.findViewById(R.id.next_episode_thumbnail)
         replayButton = view.findViewById(R.id.replay_button)
 
+        // Disable PlayerView's internal subtitle rendering — we use our own SubtitleView
+        playerView.subtitleView?.visibility = View.GONE
+
         // Configure subtitle view appearance
         subtitleView.setStyle(
             androidx.media3.ui.CaptionStyleCompat(
@@ -262,11 +288,21 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         
         // Create track selector for quality control
         trackSelector = DefaultTrackSelector(requireContext()).apply {
-            setParameters(buildUponParameters().setMaxVideoSizeSd())
+            setParameters(buildUponParameters()
+                .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
+                .setForceHighestSupportedBitrate(true)
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .setPreferredTextLanguage("en"))
         }
         
+        val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+
         player = ExoPlayer.Builder(requireContext())
             .setTrackSelector(trackSelector!!)
+            .setAudioAttributes(audioAttributes, true)
             .build()
             .apply {
                 playerView.player = this
@@ -338,20 +374,22 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         viewModel.setPlaying(isPlaying)
                         isPaused = !isPlaying
-                        
+
                         // Update play/pause button icon
                         playPauseButton.setImageResource(
                             if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
                         )
-                        
+
+                        // Show center play/pause bounce animation
+                        showPlayPauseIndicator(isPlaying)
+
                         // When paused: show controls and keep them visible
                         // When playing: schedule auto-hide
                         if (!isPlaying) {
                             // Paused - show controls and cancel auto-hide
                             hideControlsJob?.cancel()
                             if (!userHidControls) {
-                                controlsOverlay.isVisible = true
-                                settingsHint.isVisible = true
+                                showControlsAnimated(minimal = true)
                             }
                         } else {
                             // Playing - schedule auto-hide (if controls are visible)
@@ -363,15 +401,15 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                     
                     override fun onPlayerError(error: PlaybackException) {
                         val errorMessage = when (error.errorCode) {
-                            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> 
-                                "Network connection failed"
-                            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> 
-                                "Connection timeout"
-                            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED -> 
-                                "Invalid stream format"
-                            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> 
-                                "Stream unavailable (HTTP error)"
-                            else -> error.message ?: "Playback failed"
+                            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ->
+                                "Your network connection dropped. Check your internet and try again."
+                            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+                                "The stream took too long to respond. Trying another source..."
+                            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED ->
+                                "This stream format isn't supported. Trying another source..."
+                            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
+                                "This stream isn't responding. Trying another source..."
+                            else -> error.message ?: "Playback failed unexpectedly. Try another source."
                         }
                         viewModel.onStreamError(errorMessage)
                     }
@@ -539,8 +577,13 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         playerView.setOnClickListener {
             if (streamSidebar.isVisible) {
                 hideSidebar()
+            } else if (controlsOverlay.isVisible) {
+                hideControlsAnimated()
             } else {
-                viewModel.toggleControls()
+                showControlsAnimated(minimal = true)
+                if (player?.isPlaying == true) {
+                    scheduleHideControls()
+                }
             }
         }
         
@@ -663,16 +706,12 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         // Subtitles setting click - toggle or show options
         settingSubtitles.setOnClickListener { showSubtitlesDialog() }
 
-        // Set up D-pad navigation for settings with proper key handling
+        // Set up D-pad navigation for settings (BACK handled by OnBackPressedCallback)
         settingQuality.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN) {
                 when (keyCode) {
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                         showQualityDialog()
-                        true
-                    }
-                    KeyEvent.KEYCODE_BACK -> {
-                        hideSidebar()
                         true
                     }
                     KeyEvent.KEYCODE_DPAD_DOWN -> {
@@ -689,10 +728,6 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                 when (keyCode) {
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                         showSubtitlesDialog()
-                        true
-                    }
-                    KeyEvent.KEYCODE_BACK -> {
-                        hideSidebar()
                         true
                     }
                     KeyEvent.KEYCODE_DPAD_UP -> {
@@ -715,10 +750,6 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                         showAspectDialog()
                         true
                     }
-                    KeyEvent.KEYCODE_BACK -> {
-                        hideSidebar()
-                        true
-                    }
                     KeyEvent.KEYCODE_DPAD_UP -> {
                         settingSubtitles.requestFocus()
                         true
@@ -732,22 +763,6 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                     }
                     else -> false
                 }
-            } else false
-        }
-
-        // Handle back button on close button
-        closeSidebarButton.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
-                hideSidebar()
-                true
-            } else false
-        }
-
-        // Handle back button on stream list
-        streamList.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
-                hideSidebar()
-                true
             } else false
         }
     }
@@ -945,7 +960,7 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
     @OptIn(UnstableApi::class)
     private fun updateAvailableQualities(tracks: Tracks) {
         val qualities = mutableListOf<Pair<Int, String>>()
-        qualities.add(0 to "Auto")  // Always have Auto option
+        qualities.add(0 to "Auto (Best)")  // Always have Auto option
         
         for (group in tracks.groups) {
             if (group.type == C.TRACK_TYPE_VIDEO) {
@@ -990,29 +1005,37 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                 for (i in 0 until group.length) {
                     val format = group.getTrackFormat(i)
                     val language = format.language
-                    
+                    val formatId = format.id
+
+                    android.util.Log.d("NativePlayer", "Subtitle track $trackIndexGlobal: label=${format.label}, lang=$language, id=$formatId, mime=${format.sampleMimeType}")
+
                     // Build a good label from available info
                     val label = when {
                         // Use explicit label if available
                         !format.label.isNullOrBlank() -> format.label!!
                         // Try to get display language from language code
-                        !language.isNullOrBlank() -> {
+                        !language.isNullOrBlank() && language != "und" -> {
                             try {
                                 val locale = java.util.Locale.forLanguageTag(language)
                                 val displayName = locale.displayLanguage
                                 if (displayName.isNotBlank() && displayName != language) {
                                     displayName
                                 } else {
-                                    // Map common language codes
                                     getLanguageDisplayName(language)
                                 }
                             } catch (e: Exception) {
                                 getLanguageDisplayName(language)
                             }
                         }
-                        else -> "Subtitle ${trackIndexGlobal + 1}"
+                        // Try to extract language from format ID (e.g. "subs:0/en" or "English")
+                        !formatId.isNullOrBlank() -> {
+                            val langFromId = extractLanguageFromId(formatId)
+                            langFromId ?: "English" // Default to English for single unnamed track
+                        }
+                        // Single subtitle track with no info — likely English
+                        else -> "English"
                     }
-                    
+
                     subtitles.add(trackIndexGlobal to label)
                     trackIndexGlobal++
                 }
@@ -1031,6 +1054,20 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
 
         android.util.Log.d("NativePlayer", "Available subtitles: $availableSubtitles")
 
+        // Auto-enable English subtitles if available and no subtitle currently selected
+        if (currentSubtitleIndex < 0 && availableSubtitles.isNotEmpty()) {
+            val englishIndex = availableSubtitles.indexOfFirst { (_, label) ->
+                label.equals("English", ignoreCase = true) ||
+                label.startsWith("English", ignoreCase = true)
+            }
+            if (englishIndex >= 0) {
+                currentSubtitleIndex = englishIndex
+                subtitlesEnabled = true
+                setSubtitleTrack(availableSubtitles[englishIndex].first)
+                android.util.Log.d("NativePlayer", "Auto-enabled English subtitles (index $englishIndex)")
+            }
+        }
+
         // Update UI with current subtitle state
         activity?.runOnUiThread {
             if (currentSubtitleIndex >= 0 && currentSubtitleIndex < availableSubtitles.size) {
@@ -1041,6 +1078,29 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         }
     }
     
+    private fun extractLanguageFromId(id: String): String? {
+        // Try to find a language code in the ID string
+        // Common formats: "subs:0/en", "cc/eng", "English", "en-US"
+        val lowerid = id.lowercase()
+        // Check if the ID itself is a known language name
+        val knownNames = mapOf(
+            "english" to "English", "spanish" to "Spanish", "french" to "French",
+            "german" to "German", "italian" to "Italian", "portuguese" to "Portuguese",
+            "russian" to "Russian", "japanese" to "Japanese", "korean" to "Korean",
+            "chinese" to "Chinese", "arabic" to "Arabic", "hindi" to "Hindi"
+        )
+        for ((key, value) in knownNames) {
+            if (lowerid.contains(key)) return value
+        }
+        // Try to extract 2-3 letter language code from the ID
+        val codeMatch = Regex("\\b([a-z]{2,3})\\b").findAll(lowerid)
+        for (match in codeMatch) {
+            val lang = getLanguageDisplayName(match.value)
+            if (lang != match.value.uppercase()) return lang
+        }
+        return null
+    }
+
     private fun getLanguageDisplayName(code: String): String {
         // Common language codes to display names
         return when (code.lowercase()) {
@@ -1162,13 +1222,13 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
         val selector = trackSelector ?: return
         
         if (height == 0) {
-            // Auto - clear all overrides
+            // Auto (Best) - no constraints, prefer highest bitrate
             selector.setParameters(
                 selector.buildUponParameters()
                     .clearVideoSizeConstraints()
-                    .setMaxVideoSizeSd() // Allow adaptive
+                    .setForceHighestSupportedBitrate(true)
             )
-            android.util.Log.d("NativePlayer", "Quality set to Auto")
+            android.util.Log.d("NativePlayer", "Quality set to Auto (Best)")
         } else {
             // Set specific quality
             selector.setParameters(
@@ -1198,29 +1258,26 @@ class NativePlayerFragment : Fragment(R.layout.fragment_native_player) {
                     }
                     true
                 }
-                
+
                 // BACK is handled by OnBackPressedCallback in setupBackPressHandler()
 
-                // DOWN = Show controls bar
+                // DOWN = Show minimal controls bar (just progress + timestamps + hints)
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (!controlsOverlay.isVisible) {
                         userHidControls = false
-                        controlsOverlay.isVisible = true
-                        settingsHint.isVisible = true
+                        showControlsAnimated(minimal = true)
                         if (player?.isPlaying == true) {
                             scheduleHideControls()
                         }
                     }
                     true
                 }
-                
+
                 // UP = Hide controls bar
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (controlsOverlay.isVisible) {
                         userHidControls = true
-                        controlsOverlay.isVisible = false
-                        settingsHint.isVisible = false
-                        hideControlsJob?.cancel()
+                        hideControlsAnimated()
                     }
                     true
                 }
@@ -1347,12 +1404,14 @@ There may be a temporary issue with SimplStream. Try:
                     loadingView.isVisible = state.isLoading
                     if (state.isLoading) {
                         if (state.streams.isEmpty()) {
-                            loadingText.text = "Fetching streams..."
-                            loadingSubtext.text = "Connecting to SimplStream API"
+                            startRotatingLoadingMessages()
                         } else {
+                            stopRotatingLoadingMessages()
                             loadingText.text = "Loading ${state.currentStream?.provider ?: "stream"}..."
                             loadingSubtext.text = state.currentStream?.quality ?: ""
                         }
+                    } else {
+                        stopRotatingLoadingMessages()
                     }
                     
                     // Error state
@@ -1374,22 +1433,12 @@ There may be a temporary issue with SimplStream. Try:
                     }
                     
                     // Source button
-                    sourceButton.text = "Sources (${state.streams.size})"
+                    sourceButton.text = "Streams (${state.streams.size})"
                     sourceButton.isVisible = state.hasMultipleStreams
                     
-                    // Controls visibility - let onIsPlayingChanged handle this for paused state
-                    // Only update from state when not paused
-                    if (!userHidControls && !isPaused) {
-                        val showControls = state.showControls && !streamSidebar.isVisible
-                        controlsOverlay.isVisible = showControls
-                        settingsHint.isVisible = showControls
-                    }
-                    
-                    // Schedule hide only when playing and controls are visible
-                    // Let onIsPlayingChanged handle the actual show/hide logic
-                    if (state.showControls && state.isPlaying && !userHidControls && !isPaused && controlsOverlay.isVisible) {
-                        scheduleHideControls()
-                    }
+                    // Controls visibility - driven by animations, don't fight them
+                    // Only act on explicit showControls=false from ViewModel (e.g. toggleControls)
+                    // Don't re-schedule hide on every state update — that causes the 1-second close bug
                     
                     // Update stream list
                     updateStreamList(state)
@@ -1494,53 +1543,184 @@ There may be a temporary issue with SimplStream. Try:
     }
     
     private fun showSidebar() {
-        streamSidebar.isVisible = true
-        controlsOverlay.isVisible = false
-        settingsHint.isVisible = false
+        controlsOverlay.visibility = View.GONE
+        controlsOverlay.translationY = 0f
+        settingsHint.visibility = View.GONE
+        settingsHint.translationY = 0f
         hideControlsJob?.cancel()
-        userHidControls = false  // Reset when sidebar opens
+        userHidControls = false
+
+        // Slide in from the right
+        streamSidebar.translationX = streamSidebar.width.toFloat().takeIf { it > 0f } ?: 400f
+        streamSidebar.isVisible = true
+        streamSidebar.animate()
+            .translationX(0f)
+            .setDuration(250)
+            .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
+            .start()
 
         // Clear focus from playerView first, then transfer to sidebar
         playerView.clearFocus()
-
-        // Use postDelayed to ensure sidebar is fully laid out before requesting focus
         streamSidebar.postDelayed({
             settingQuality.isFocusable = true
             settingQuality.isFocusableInTouchMode = true
-            val focusResult = settingQuality.requestFocus()
-            android.util.Log.d("NativePlayer", "Sidebar focus request result: $focusResult")
+            settingQuality.requestFocus()
         }, 50)
     }
-    
+
     private fun hideSidebar() {
-        streamSidebar.isVisible = false
-        userHidControls = false  // Reset when sidebar closes
-        controlsOverlay.isVisible = viewModel.uiState.value.showControls
-        settingsHint.isVisible = controlsOverlay.isVisible
+        userHidControls = false
+        backPressCount = 0
+
+        // Slide out to the right
+        streamSidebar.animate()
+            .translationX(streamSidebar.width.toFloat().takeIf { it > 0f } ?: 400f)
+            .setDuration(200)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .withEndAction {
+                streamSidebar.isVisible = false
+                streamSidebar.translationX = 0f
+            }
+            .start()
+
         // Return focus to playerView for D-pad controls
         playerView.requestFocus()
-        // Reset back button state when sidebar is manually closed
-        backPressCount = 0
     }
     
     private fun scheduleHideControls() {
         hideControlsJob?.cancel()
-        
+
         // Don't auto-hide if paused
         if (isPaused) return
-        
+
         hideControlsJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(5000)  // 5 seconds of inactivity while playing
             // Only hide if still playing and not user-hidden
             if (!streamSidebar.isVisible && !userHidControls && player?.isPlaying == true) {
-                controlsOverlay.isVisible = false
-                settingsHint.isVisible = false
-                playerView.requestFocus()  // Return focus to playerView
+                hideControlsAnimated()
                 viewModel.hideControls()
             }
         }
     }
+
+    private fun showControlsAnimated(minimal: Boolean = false) {
+        if (controlsAnimating) return
+
+        // Set minimal mode: hide title and buttons rows, show only progress + hints
+        titleRow.isVisible = !minimal
+        controlsRow.isVisible = !minimal
+
+        if (!controlsOverlay.isVisible) {
+            controlsOverlay.visibility = View.VISIBLE
+            settingsHint.visibility = View.VISIBLE
+            controlsOverlay.translationY = controlsOverlay.height.toFloat().takeIf { it > 0f } ?: 200f
+            settingsHint.translationY = 50f
+
+            controlsAnimating = true
+            val slideUp = ObjectAnimator.ofFloat(controlsOverlay, "translationY", 0f).apply {
+                duration = 300
+                interpolator = android.view.animation.DecelerateInterpolator()
+            }
+            val hintSlide = ObjectAnimator.ofFloat(settingsHint, "translationY", 0f).apply {
+                duration = 300
+                interpolator = android.view.animation.DecelerateInterpolator()
+            }
+            AnimatorSet().apply {
+                playTogether(slideUp, hintSlide)
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        controlsAnimating = false
+                    }
+                })
+                start()
+            }
+        } else {
+            // Already visible, just update minimal mode
+            settingsHint.isVisible = true
+        }
+    }
+
+    private fun hideControlsAnimated() {
+        if (!controlsOverlay.isVisible || controlsAnimating) return
+
+        controlsAnimating = true
+        hideControlsJob?.cancel()
+
+        val slideDown = ObjectAnimator.ofFloat(controlsOverlay, "translationY", controlsOverlay.height.toFloat()).apply {
+            duration = 250
+            interpolator = android.view.animation.AccelerateInterpolator()
+        }
+        val hintSlide = ObjectAnimator.ofFloat(settingsHint, "translationY", 50f).apply {
+            duration = 250
+            interpolator = android.view.animation.AccelerateInterpolator()
+        }
+        AnimatorSet().apply {
+            playTogether(slideDown, hintSlide)
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    controlsOverlay.isVisible = false
+                    settingsHint.isVisible = false
+                    controlsOverlay.translationY = 0f
+                    settingsHint.translationY = 0f
+                    controlsAnimating = false
+                    playerView.requestFocus()
+                }
+            })
+            start()
+        }
+    }
+
+    private fun showPlayPauseIndicator(isPlaying: Boolean) {
+        playPauseIndicator.setImageResource(if (isPlaying) R.drawable.ic_play else R.drawable.ic_pause)
+        playPauseIndicator.visibility = View.VISIBLE
+        playPauseIndicator.alpha = 1f
+        playPauseIndicator.scaleX = 0.3f
+        playPauseIndicator.scaleY = 0.3f
+
+        // Bounce in
+        val scaleX = ObjectAnimator.ofFloat(playPauseIndicator, "scaleX", 0.3f, 1.2f, 1f).apply {
+            duration = 400
+            interpolator = OvershootInterpolator(2f)
+        }
+        val scaleY = ObjectAnimator.ofFloat(playPauseIndicator, "scaleY", 0.3f, 1.2f, 1f).apply {
+            duration = 400
+            interpolator = OvershootInterpolator(2f)
+        }
+        // Fade out after bounce
+        val fadeOut = ObjectAnimator.ofFloat(playPauseIndicator, "alpha", 1f, 0f).apply {
+            startDelay = 500
+            duration = 500
+        }
+
+        AnimatorSet().apply {
+            playTogether(scaleX, scaleY, fadeOut)
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    playPauseIndicator.visibility = View.GONE
+                }
+            })
+            start()
+        }
+    }
     
+    private fun startRotatingLoadingMessages() {
+        if (loadingMessageJob?.isActive == true) return
+        var index = 0
+        loadingMessageJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive) {
+                loadingText.text = funnyLoadingMessages[index % funnyLoadingMessages.size]
+                loadingSubtext.text = "Hold tight..."
+                index++
+                delay(3000)
+            }
+        }
+    }
+
+    private fun stopRotatingLoadingMessages() {
+        loadingMessageJob?.cancel()
+        loadingMessageJob = null
+    }
+
     private fun observeEvents() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -1599,6 +1779,7 @@ There may be a temporary issue with SimplStream. Try:
         progressUpdateJob?.cancel()
         skipIndicatorJob?.cancel()
         nextEpisodeCountdownJob?.cancel()
+        loadingMessageJob?.cancel()
         try {
             requireActivity().window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } catch (e: Exception) {

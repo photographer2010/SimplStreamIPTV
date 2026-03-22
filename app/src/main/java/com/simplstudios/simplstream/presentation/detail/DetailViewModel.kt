@@ -200,7 +200,7 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    fun playEpisode(episode: Episode) {
+    fun playEpisode(episode: Episode, resumePosition: Long = 0) {
         val tvShow = _uiState.value.tvShowDetail ?: return
         val sources = contentRepository.getVideoSources(
             contentId = tvShow.id,
@@ -209,7 +209,7 @@ class DetailViewModel @Inject constructor(
             episodeNumber = episode.episodeNumber,
             imdbId = tvShow.imdbId
         )
-        
+
         viewModelScope.launch {
             _events.emit(
                 DetailEvent.PlayContent(
@@ -221,36 +221,38 @@ class DetailViewModel @Inject constructor(
                     seasonNumber = episode.seasonNumber,
                     episodeNumber = episode.episodeNumber,
                     episodeName = episode.name,
-                    resumePosition = 0, // Could check episode-specific history
+                    resumePosition = resumePosition,
                     posterUrl = tvShow.posterUrl
                 )
             )
         }
     }
-    
+
     fun resumeWatching() {
         val history = _uiState.value.watchHistory
-        
+
         if (mediaType == MediaType.MOVIE) {
             playMovie()
         } else if (history != null && history.seasonNumber != null && history.episodeNumber != null) {
+            val resumePos = if (!history.isCompleted) history.watchPosition else 0L
+
             // Resume specific episode
             val seasonDetail = _uiState.value.currentSeasonDetail
             if (seasonDetail?.seasonNumber == history.seasonNumber) {
                 val episode = seasonDetail.episodes.find { it.episodeNumber == history.episodeNumber }
                 if (episode != null) {
-                    playEpisode(episode)
+                    playEpisode(episode, resumePos)
                     return
                 }
             }
-            
+
             // Load the correct season and play
             viewModelScope.launch {
                 val result = contentRepository.getSeasonDetails(contentId, history.seasonNumber)
                 result.onSuccess { season ->
                     val episode = season.episodes.find { it.episodeNumber == history.episodeNumber }
                     if (episode != null) {
-                        playEpisode(episode)
+                        playEpisode(episode, resumePos)
                     }
                 }
             }

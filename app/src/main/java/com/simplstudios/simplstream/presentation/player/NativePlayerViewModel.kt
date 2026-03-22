@@ -94,7 +94,7 @@ class NativePlayerViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "No streams available for this content"
+                                error = "We couldn't find any streams for this title. Try again later or pick something else."
                             )
                         }
                     } else {
@@ -115,7 +115,7 @@ class NativePlayerViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.message ?: "Failed to load streams"
+                            error = error.message ?: "Something went wrong while fetching streams. Please try again."
                         )
                     }
                 }
@@ -171,7 +171,7 @@ class NativePlayerViewModel @Inject constructor(
         if (nextIndex < _uiState.value.streams.size) {
             switchStream(nextIndex)
         } else {
-            _uiState.update { it.copy(error = "All streams failed to load") }
+            _uiState.update { it.copy(error = "None of our sources have this title available right now.") }
         }
     }
     

@@ -19,7 +19,10 @@ import com.simplstudios.simplstream.domain.model.Profile
  * Dialog for creating a new profile
  */
 class AddProfileDialog(
-    private val onProfileCreated: (name: String, avatarIndex: Int, pin: String?, isKids: Boolean) -> Unit
+    private val onProfileCreated: (name: String, avatarIndex: Int, pin: String?, isKids: Boolean) -> Unit,
+    private val onVerifyParentalPin: ((pin: String, onSuccess: () -> Unit, onError: () -> Unit) -> Unit)? = null,
+    private val onSetParentalPin: ((pin: String) -> Unit)? = null,
+    private val hasParentalPin: ((callback: (Boolean) -> Unit) -> Unit)? = null
 ) : DialogFragment() {
     
     private var selectedAvatarIndex = 0
@@ -68,21 +71,40 @@ class AddProfileDialog(
                 val name = nameInput.text.toString().trim()
                 val pin = pinInput.text.toString().takeIf { it.length == 4 }
                 val isKids = kidsCheckbox.isChecked
-                
+
                 if (name.length < 2) {
                     errorText.text = "Name must be at least 2 characters"
                     errorText.visibility = View.VISIBLE
                     return@setOnClickListener
                 }
-                
+
                 if (pinInput.text.isNotEmpty() && pinInput.text.length != 4) {
                     errorText.text = "PIN must be 4 digits"
                     errorText.visibility = View.VISIBLE
                     return@setOnClickListener
                 }
-                
-                onProfileCreated(name, selectedAvatarIndex, pin, isKids)
-                dismiss()
+
+                if (isKids && hasParentalPin != null) {
+                    // Kids profile requires parental PIN verification/setup
+                    hasParentalPin.invoke { exists ->
+                        if (exists) {
+                            // Verify existing parental PIN
+                            showParentalPinInput(errorText) {
+                                onProfileCreated(name, selectedAvatarIndex, pin, true)
+                                dismiss()
+                            }
+                        } else {
+                            // Need to set parental PIN first
+                            showSetParentalPinInput(errorText) {
+                                onProfileCreated(name, selectedAvatarIndex, pin, true)
+                                dismiss()
+                            }
+                        }
+                    }
+                } else {
+                    onProfileCreated(name, selectedAvatarIndex, pin, isKids)
+                    dismiss()
+                }
             }
             
             // Cancel button
@@ -98,6 +120,89 @@ class AddProfileDialog(
         }
     }
     
+    private fun showParentalPinInput(errorText: TextView, onVerified: () -> Unit) {
+        val pinDialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_pin_verify_delete, null)
+        val pinInput = pinDialogView.findViewById<EditText>(R.id.pin_input)
+        val pinError = pinDialogView.findViewById<TextView>(R.id.error_text)
+
+        val pinDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setTitle("Parental PIN Required")
+            .setMessage("Enter the parental PIN to create a Kids profile")
+            .setView(pinDialogView)
+            .create()
+
+        pinDialogView.findViewById<View>(R.id.cancel_button).setOnClickListener {
+            pinDialog.dismiss()
+        }
+
+        pinDialogView.findViewById<View>(R.id.verify_button).setOnClickListener {
+            val entered = pinInput.text.toString()
+            if (entered.length != 4) {
+                pinError.text = "PIN must be 4 digits"
+                pinError.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
+            onVerifyParentalPin?.invoke(entered, {
+                pinDialog.dismiss()
+                onVerified()
+            }, {
+                pinError.text = "Incorrect parental PIN"
+                pinError.visibility = View.VISIBLE
+                pinInput.text?.clear()
+            })
+        }
+
+        pinDialog.show()
+        pinInput.requestFocus()
+    }
+
+    private fun showSetParentalPinInput(errorText: TextView, onPinSet: () -> Unit) {
+        val pinDialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_parental_pin, null)
+        val titleText = pinDialogView.findViewById<TextView>(R.id.dialog_title)
+        val subtitleText = pinDialogView.findViewById<TextView>(R.id.dialog_subtitle)
+        val currentPinContainer = pinDialogView.findViewById<View>(R.id.current_pin_container)
+        val newPinInput = pinDialogView.findViewById<EditText>(R.id.new_pin_input)
+        val confirmPinInput = pinDialogView.findViewById<EditText>(R.id.confirm_pin_input)
+        val pinError = pinDialogView.findViewById<TextView>(R.id.error_text)
+
+        titleText.text = "Set Parental PIN"
+        subtitleText.text = "A parental PIN is required to create Kids profiles. This PIN controls parental settings."
+        currentPinContainer.visibility = View.GONE
+
+        val pinDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setView(pinDialogView)
+            .create()
+
+        pinDialogView.findViewById<View>(R.id.cancel_button).setOnClickListener {
+            pinDialog.dismiss()
+        }
+
+        pinDialogView.findViewById<View>(R.id.save_button).setOnClickListener {
+            val newPin = newPinInput.text.toString()
+            val confirmPin = confirmPinInput.text.toString()
+
+            if (newPin.length != 4) {
+                pinError.text = "PIN must be 4 digits"
+                pinError.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
+            if (newPin != confirmPin) {
+                pinError.text = "PINs do not match"
+                pinError.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
+
+            onSetParentalPin?.invoke(newPin)
+            pinDialog.dismiss()
+            onPinSet()
+        }
+
+        pinDialog.show()
+        newPinInput.requestFocus()
+    }
+
     override fun onStart() {
         super.onStart()
         // Set dialog size - fixed width for TV screens
@@ -159,8 +264,8 @@ class AvatarAdapter(
             // Focus handling
             itemView.isFocusable = true
             itemView.setOnFocusChangeListener { _, hasFocus ->
-                val scale = if (hasFocus) 1.2f else 1.0f
-                itemView.animate().scaleX(scale).scaleY(scale).setDuration(100).start()
+                val scale = if (hasFocus) 1.04f else 1.0f
+                itemView.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
             }
         }
     }

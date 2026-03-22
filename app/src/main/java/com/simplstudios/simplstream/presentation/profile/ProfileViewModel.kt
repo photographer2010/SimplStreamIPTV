@@ -101,7 +101,18 @@ class ProfileViewModel @Inject constructor(
     
     private suspend fun setCurrentProfile(profileId: Long) {
         sessionManager.setCurrentProfile(profileId)
-        _events.emit(ProfileEvent.ProfileSelected(profileId))
+        val profile = _uiState.value.profiles.find { it.id == profileId }
+        // Track kids profile status for content filtering
+        sessionManager.setKidsProfile(profile?.isKidsProfile == true)
+        val showWelcome = sessionManager.shouldShowWelcome(profileId)
+        if (showWelcome) {
+            sessionManager.recordProfileLogin(profileId)
+        }
+        _events.emit(ProfileEvent.ProfileSelected(
+            profileId = profileId,
+            profileName = profile?.name ?: "User",
+            showWelcome = showWelcome
+        ))
     }
     
     fun createProfile(
@@ -200,6 +211,41 @@ class ProfileViewModel @Inject constructor(
     fun setEditingProfile(profile: Profile?) {
         _uiState.update { it.copy(editingProfile = profile) }
     }
+
+    // ==================== PARENTAL PIN ====================
+
+    fun hasParentalPin(callback: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            callback(sessionManager.hasParentalPin())
+        }
+    }
+
+    fun verifyParentalPin(pin: String, onSuccess: () -> Unit, onError: () -> Unit) {
+        viewModelScope.launch {
+            if (sessionManager.verifyParentalPin(pin)) {
+                onSuccess()
+            } else {
+                onError()
+            }
+        }
+    }
+
+    fun setParentalPin(pin: String) {
+        viewModelScope.launch {
+            sessionManager.setParentalPin(pin)
+        }
+    }
+
+    fun changeParentalPin(currentPin: String, newPin: String, onSuccess: () -> Unit, onError: () -> Unit) {
+        viewModelScope.launch {
+            if (sessionManager.verifyParentalPin(currentPin)) {
+                sessionManager.setParentalPin(newPin)
+                onSuccess()
+            } else {
+                onError()
+            }
+        }
+    }
 }
 
 data class ProfileUiState(
@@ -216,7 +262,11 @@ data class ProfileUiState(
 }
 
 sealed class ProfileEvent {
-    data class ProfileSelected(val profileId: Long) : ProfileEvent()
+    data class ProfileSelected(
+        val profileId: Long,
+        val profileName: String = "User",
+        val showWelcome: Boolean = false
+    ) : ProfileEvent()
     data class ProfileCreated(val profileId: Long) : ProfileEvent()
     data object ProfileUpdated : ProfileEvent()
     data object ProfileDeleted : ProfileEvent()

@@ -30,15 +30,33 @@ class ForYouViewModel @Inject constructor(
     private val recommendationRepository: RecommendationRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(ForYouState())
     val uiState: StateFlow<ForYouState> = _uiState.asStateFlow()
-    
+
     private val _events = MutableSharedFlow<ForYouEvent>()
     val events = _events.asSharedFlow()
-    
+
+    private var isKidsMode = false
+
     init {
+        viewModelScope.launch {
+            sessionManager.isKidsProfile.collect { isKids ->
+                isKidsMode = isKids
+                // Re-filter if sections already loaded
+                if (_uiState.value.sections.isNotEmpty()) {
+                    _uiState.update { it.copy(sections = filterSectionsForKids(it.sections)) }
+                }
+            }
+        }
         loadRecommendations()
+    }
+
+    private fun filterSectionsForKids(sections: List<RecommendationSection>): List<RecommendationSection> {
+        if (!isKidsMode) return sections
+        return sections.map { section ->
+            section.copy(items = section.items.filter { it.content.isKidsSafe })
+        }.filter { it.items.isNotEmpty() }
     }
     
     /**
@@ -71,8 +89,8 @@ class ForYouViewModel @Inject constructor(
                 onSuccess = { sections ->
                     _uiState.update { it.copy(
                         isLoading = false,
-                        sections = sections,
-                        spotlight = spotlight,
+                        sections = filterSectionsForKids(sections),
+                        spotlight = if (isKidsMode && spotlight?.content?.content?.isKidsSafe == false) null else spotlight,
                         tasteProfile = tasteProfile,
                         lastRefreshed = System.currentTimeMillis(),
                         error = null
@@ -87,7 +105,7 @@ class ForYouViewModel @Inject constructor(
             )
         }
     }
-    
+
     /**
      * Refresh recommendations (pull-to-refresh or manual refresh)
      */
@@ -95,23 +113,24 @@ class ForYouViewModel @Inject constructor(
         viewModelScope.launch {
             val profileId = sessionManager.currentProfileId.first()
             if (profileId == SessionManager.NO_PROFILE) return@launch
-            
+
             _uiState.update { it.copy(isRefreshing = true) }
-            
+
             // First refresh the taste profile
             recommendationRepository.refreshTasteProfile(profileId)
-            
+
             // Then reload all sections
             val sectionsResult = recommendationRepository.getForYouSections(profileId)
             val spotlightResult = recommendationRepository.getSpotlightContent(profileId)
             val tasteProfile = recommendationRepository.getTasteProfile(profileId).getOrNull()
-            
+
             sectionsResult.fold(
                 onSuccess = { sections ->
+                    val spotlight = spotlightResult.getOrNull()
                     _uiState.update { it.copy(
                         isRefreshing = false,
-                        sections = sections,
-                        spotlight = spotlightResult.getOrNull(),
+                        sections = filterSectionsForKids(sections),
+                        spotlight = if (isKidsMode && spotlight?.content?.content?.isKidsSafe == false) null else spotlight,
                         tasteProfile = tasteProfile,
                         lastRefreshed = System.currentTimeMillis()
                     )}

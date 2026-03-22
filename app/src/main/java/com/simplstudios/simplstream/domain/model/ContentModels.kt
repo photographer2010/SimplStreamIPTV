@@ -33,10 +33,29 @@ data class Content(
     val backdropUrl: String?,
     val voteAverage: Float,
     val releaseDate: String?,
-    val mediaType: MediaType
+    val mediaType: MediaType,
+    val genreIds: List<Int> = emptyList(),
+    val adult: Boolean = false
 ) {
     val year: String? get() = releaseDate?.take(4)
     val ratingDisplay: String get() = "%.1f".format(voteAverage)
+
+    /**
+     * Whether this content is safe for kids profiles.
+     * Filters out adult content and inappropriate genres.
+     */
+    val isKidsSafe: Boolean get() {
+        if (adult) return false
+        // TMDB genre IDs that are inappropriate for kids
+        val unsafeGenreIds = setOf(
+            27,    // Horror
+            53,    // Thriller
+            80,    // Crime
+            10752, // War
+            10770  // TV Movie (often adult-themed)
+        )
+        return genreIds.none { it in unsafeGenreIds }
+    }
 }
 
 /**
@@ -223,9 +242,9 @@ data class VideoSource(
     companion object {
         // User-facing display names
         fun getDisplayName(id: VideoServerId): String = when (id) {
-            VideoServerId.MOVIES111 -> "Server Alpha"
-            VideoServerId.VIDNEST -> "Server Dot"
-            VideoServerId.VIDLINK -> "Server Omega"
+            VideoServerId.MOVIES111 -> "Stream Alpha"
+            VideoServerId.VIDNEST -> "Stream Dot"
+            VideoServerId.VIDLINK -> "Stream Omega"
         }
         
         // Server descriptions

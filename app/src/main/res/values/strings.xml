@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SimplStream</string>
-    <string name="app_name_styled"><![CDATA[<font color="#2563EB">Simpl</font>Stream]]></string>
+    <string name="app_name">SimplStreamTV</string>
+    <string name="app_name_styled"><![CDATA[<font color="#2563EB">Simpl</font>StreamTV]]></string>
     
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -130,6 +130,6 @@
     <string name="profile_created">Profile created</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_yes">Yes</string>
-    <string name="exit_app_title">Exit SimplStream?</string>
+    <string name="exit_app_title">Exit SimplStreamTV?</string>
     <string name="exit_app_message">Are you sure you want to close the app?</string>
 </resources>

@@ -1,12 +1,17 @@
 package com.simplstudios.simplstream.presentation.profile
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -21,6 +26,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.simplstudios.simplstream.R
 import com.simplstudios.simplstream.domain.model.Profile
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -35,7 +41,13 @@ class ProfileSelectionFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var addProfileButton: View
     private lateinit var loadingView: View
-    
+
+    // Welcome animation views
+    private lateinit var welcomeOverlay: FrameLayout
+    private lateinit var welcomeGlow: View
+    private lateinit var welcomeText: TextView
+    private lateinit var welcomeName: TextView
+
     private var profileAdapter: ProfileAdapter? = null
     
     override fun onCreateView(
@@ -52,7 +64,13 @@ class ProfileSelectionFragment : Fragment() {
         recyclerView = view.findViewById(R.id.profiles_recycler)
         addProfileButton = view.findViewById(R.id.add_profile_button)
         loadingView = view.findViewById(R.id.loading_view)
-        
+
+        // Welcome overlay
+        welcomeOverlay = view.findViewById(R.id.welcome_overlay)
+        welcomeGlow = view.findViewById(R.id.welcome_glow)
+        welcomeText = view.findViewById(R.id.welcome_text)
+        welcomeName = view.findViewById(R.id.welcome_name)
+
         setupProfileList()
         setupAddButton()
         observeState()
@@ -119,8 +137,11 @@ class ProfileSelectionFragment : Fragment() {
                 viewModel.events.collect { event ->
                     when (event) {
                         is ProfileEvent.ProfileSelected -> {
-                            // Navigate to home
-                            findNavController().navigate(R.id.action_profile_to_home)
+                            if (event.showWelcome) {
+                                playWelcomeAnimation(event.profileName)
+                            } else {
+                                findNavController().navigate(R.id.action_profile_to_home)
+                            }
                         }
                         is ProfileEvent.ProfileCreated -> {
                             Toast.makeText(requireContext(), R.string.profile_created, Toast.LENGTH_SHORT).show()
@@ -143,6 +164,95 @@ class ProfileSelectionFragment : Fragment() {
         }
     }
     
+    /**
+     * Plays a smooth, cinematic welcome animation then navigates to home.
+     * First fades out profile selection, then shows "Welcome, [name]" with
+     * gentle animations, holds the moment, then fades out into the homepage.
+     */
+    private fun playWelcomeAnimation(profileName: String) {
+        welcomeName.text = profileName
+
+        // Reset welcome elements to invisible
+        welcomeOverlay.visibility = View.VISIBLE
+        welcomeOverlay.alpha = 0f
+        welcomeText.alpha = 0f
+        welcomeText.translationY = 20f
+        welcomeName.alpha = 0f
+        welcomeName.scaleX = 0.9f
+        welcomeName.scaleY = 0.9f
+        welcomeName.translationY = 15f
+        welcomeGlow.alpha = 0f
+        welcomeGlow.scaleX = 0.6f
+        welcomeGlow.scaleY = 0.6f
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Phase 0: Fade in the overlay background smoothly over the profile page (500ms)
+            welcomeOverlay.animate()
+                .alpha(1f)
+                .setDuration(500)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+
+            delay(500)
+
+            // Phase 1: "Welcome," gently slides up and fades in (500ms)
+            welcomeText.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(500)
+                .setInterpolator(DecelerateInterpolator(1.5f))
+                .start()
+
+            delay(350)
+
+            // Phase 2: Profile name scales in with gentle overshoot (600ms)
+            welcomeName.animate()
+                .alpha(1f)
+                .scaleX(1f).scaleY(1f)
+                .translationY(0f)
+                .setDuration(600)
+                .setInterpolator(OvershootInterpolator(0.8f))
+                .start()
+
+            // Phase 2b: Glow breathes in behind (800ms)
+            welcomeGlow.animate()
+                .alpha(0.5f)
+                .scaleX(1.1f).scaleY(1.1f)
+                .setDuration(800)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+
+            // Hold — let the user read and feel it
+            delay(1800)
+
+            // Phase 3: Gentle glow pulse (breathe out slightly)
+            welcomeGlow.animate()
+                .alpha(0.3f)
+                .scaleX(1.3f).scaleY(1.3f)
+                .setDuration(600)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+
+            delay(400)
+
+            // Phase 4: Everything fades out together (600ms)
+            welcomeText.animate().alpha(0f).translationY(-10f).setDuration(500).start()
+            welcomeName.animate().alpha(0f).translationY(-10f).setDuration(500).start()
+            welcomeGlow.animate().alpha(0f).setDuration(600).start()
+            welcomeOverlay.animate()
+                .alpha(0f)
+                .setDuration(600)
+                .setInterpolator(DecelerateInterpolator())
+                .withEndAction {
+                    welcomeOverlay.visibility = View.GONE
+                    if (isAdded) {
+                        findNavController().navigate(R.id.action_profile_to_home)
+                    }
+                }
+                .start()
+        }
+    }
+
     private var pinDialog: PinInputDialog? = null
     
     private fun showPinDialog(profile: Profile, error: String?) {
@@ -159,10 +269,32 @@ class ProfileSelectionFragment : Fragment() {
     }
     
     private fun showAddProfileDialog() {
-        val dialog = AddProfileDialog { name, avatarIndex, pin, isKids ->
-            viewModel.createProfile(name, avatarIndex, pin, isKids)
+        // Prevent duplicate dialogs
+        if (childFragmentManager.findFragmentByTag("add_profile") != null) {
             viewModel.hideAddProfileDialog()
+            return
         }
+        val dialog = AddProfileDialog(
+            onProfileCreated = { name, avatarIndex, pin, isKids ->
+                viewModel.createProfile(name, avatarIndex, pin, isKids)
+                viewModel.hideAddProfileDialog()
+            },
+            onVerifyParentalPin = { pin, onSuccess, onError ->
+                viewModel.verifyParentalPin(pin, onSuccess, onError)
+            },
+            onSetParentalPin = { pin ->
+                viewModel.setParentalPin(pin)
+            },
+            hasParentalPin = { callback ->
+                viewModel.hasParentalPin(callback)
+            }
+        )
+        // Clear state when dialog is dismissed by any means (back, cancel, etc.)
+        dialog.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) {
+                viewModel.hideAddProfileDialog()
+            }
+        })
         dialog.show(childFragmentManager, "add_profile")
     }
     
@@ -184,6 +316,9 @@ class ProfileSelectionFragment : Fragment() {
             },
             onVerifyPin = { pin, onSuccess, onError ->
                 viewModel.verifyPinForAction(profile.id, pin, onSuccess, onError)
+            },
+            onVerifyParentalPin = { pin, onSuccess, onError ->
+                viewModel.verifyParentalPin(pin, onSuccess, onError)
             }
         )
         dialog.show(childFragmentManager, "edit_profile")
@@ -278,22 +413,20 @@ class ProfileAdapter(
                 }
             }
             
-            // Focus change animation - Netflix style
+            // Focus change animation — clean, no border overlay
             itemView.setOnFocusChangeListener { _, hasFocus ->
-                // Scale animation
-                val scale = if (hasFocus) 1.08f else 1.0f
+                val scale = if (hasFocus) 1.04f else 1.0f
                 itemView.animate()
                     .scaleX(scale)
                     .scaleY(scale)
-                    .setDuration(200)
+                    .alpha(if (hasFocus) 1f else 0.7f)
+                    .setDuration(150)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
                     .start()
-                
+
                 // Show/hide focus ring
                 focusRing.visibility = if (hasFocus) View.VISIBLE else View.INVISIBLE
-                
-                // Elevate on focus
-                itemView.elevation = if (hasFocus) 12f else 0f
-                
+
                 itemView.isSelected = hasFocus
             }
         }

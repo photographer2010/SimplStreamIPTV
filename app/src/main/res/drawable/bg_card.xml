@@ -2,6 +2,6 @@
 <!-- Card background - Netflix style with rounded corners -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/brand_card"/>
+    <solid android:color="#141519"/>
     <corners android:radius="@dimen/card_corner_radius"/>
 </shape>

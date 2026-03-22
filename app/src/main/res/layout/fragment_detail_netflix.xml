@@ -106,6 +106,7 @@
                     android:background="@drawable/bg_glass_circle"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
+                    android:defaultFocusHighlightEnabled="false"
                     android:contentDescription="Go back" />
 
             </FrameLayout>
@@ -123,8 +124,9 @@
                     android:layout_width="@dimen/detail_poster_width"
                     android:layout_height="@dimen/detail_poster_height"
                     app:cardCornerRadius="@dimen/card_corner_radius"
-                    app:cardElevation="8dp"
-                    app:cardBackgroundColor="@color/brand_card">
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@android:color/transparent"
+                    android:stateListAnimator="@null">
 
                     <ImageView
                         android:id="@+id/poster_image"
@@ -166,24 +168,24 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:background="@drawable/bg_rating_badge"
-                            android:paddingHorizontal="12dp"
-                            android:paddingVertical="6dp"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp"
                             android:gravity="center_vertical"
                             android:orientation="horizontal">
 
                             <ImageView
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
+                                android:layout_width="12dp"
+                                android:layout_height="12dp"
                                 android:src="@drawable/ic_star"
-                                app:tint="@color/white" />
+                                app:tint="@color/rating_gold" />
 
                             <TextView
                                 android:id="@+id/rating_text"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="6dp"
-                                android:textColor="@color/white"
-                                android:textSize="14sp"
+                                android:layout_marginStart="4dp"
+                                android:textColor="@color/rating_gold"
+                                android:textSize="12sp"
                                 android:fontFamily="@font/outfit_bold"
                                 tools:text="8.5" />
 
@@ -262,7 +264,8 @@
                             android:drawableTint="@color/white"
                             style="@style/Widget.SimplStream.Button.Primary"
                             android:focusable="true"
-                            android:focusableInTouchMode="true" />
+                            android:focusableInTouchMode="true"
+                            android:defaultFocusHighlightEnabled="false" />
 
                         <!-- Add to List Button -->
                         <Button
@@ -276,7 +279,8 @@
                             android:layout_marginStart="16dp"
                             style="@style/Widget.SimplStream.Button.Secondary"
                             android:focusable="true"
-                            android:focusableInTouchMode="true" />
+                            android:focusableInTouchMode="true"
+                            android:defaultFocusHighlightEnabled="false" />
 
                     </LinearLayout>
 

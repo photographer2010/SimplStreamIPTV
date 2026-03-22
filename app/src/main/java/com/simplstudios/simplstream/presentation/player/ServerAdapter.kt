@@ -78,9 +78,9 @@ class ServerAdapter(
             
             // Set content description for accessibility
             defaultStarButton.contentDescription = if (item.isDefaultServer) {
-                "Default server. Tap to remove default"
+                "Default stream. Tap to remove default"
             } else {
-                "Set ${source.displayName} as default server"
+                "Set ${source.displayName} as default stream"
             }
             
             // Click listeners

@@ -252,7 +252,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
                     errorText.text = state.error ?: ""
                     
                     titleText.text = state.displayTitle
-                    sourceButton.text = state.currentSource?.displayName ?: "Server"
+                    sourceButton.text = state.currentSource?.displayName ?: "Stream"
                     sourceButton.isVisible = state.hasMultipleSources
                     
                     controlsOverlay.isVisible = state.showControls && !serverSidebar.isVisible

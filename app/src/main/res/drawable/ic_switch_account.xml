@@ -1,10 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Users/Switch Account icon (Lucide style) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M4,4h9v9H4V4zm11,2h2v7h-2V6zm-2,9h4v2H13v-2zm2,-9h4v2h-4V6zm4,9v2h-6v-2h6zm-6,4h6v2h-6v-2zM4,15h9v2H4v-2zm0,4h9v2H4v-2z" />
+        android:pathData="M16,21v-2a4,4 0,0 0,-4 -4H6a4,4 0,0 0,-4 4v2"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M9,11a4,4 0,1 0,0 -8a4,4 0,0 0,0 8z"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M22,21v-2a4,4 0,0 0,-3 -3.87"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M16,3.13a4,4 0,0 1,0 7.75"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
 </vector>

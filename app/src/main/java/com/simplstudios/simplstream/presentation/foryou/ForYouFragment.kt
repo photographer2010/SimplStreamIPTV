@@ -127,17 +127,15 @@ class ForYouFragment : Fragment() {
             viewModel.refreshRecommendations()
         }
         
-        // Focus handling for refresh button
+        // Focus handling for refresh button — no scale
         refreshButton.setOnFocusChangeListener { v, hasFocus ->
-            val scale = if (hasFocus) 1.1f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+            v.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
         }
-        
-        // Spotlight button focus handling
+
+        // Spotlight button focus handling — no scale
         listOf(spotlightPlayButton, spotlightInfoButton).forEach { btn ->
             btn.setOnFocusChangeListener { v, hasFocus ->
-                val scale = if (hasFocus) 1.05f else 1f
-                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+                v.animate().alpha(if (hasFocus) 1f else 0.8f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
             }
         }
     }
@@ -351,7 +349,6 @@ class RecommendationCardAdapter(
         val ratingText: TextView = view.findViewById(R.id.rating_text)
         val titleText: TextView = view.findViewById(R.id.title_text)
         val matchReason: TextView = view.findViewById(R.id.match_reason)
-        val focusBorder: View = view.findViewById(R.id.focus_border)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -429,15 +426,19 @@ class RecommendationCardAdapter(
         // Click handler
         holder.itemView.setOnClickListener { onItemClick(item) }
         
-        // D-pad focus handling
+        // D-pad focus handling — clip to outline to prevent black rect on scale
+        holder.cardContainer.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+        holder.cardContainer.clipToOutline = true
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            holder.focusBorder.visibility = if (hasFocus) View.VISIBLE else View.INVISIBLE
-            
-            val scale = if (hasFocus) 1.06f else 1f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
-            holder.cardContainer.cardElevation = if (hasFocus) 12f else 0f
+            val scale = if (hasFocus) 1.03f else 1f
+            v.animate()
+                .scaleX(scale).scaleY(scale)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
         }
-        
+
         // D-pad enter key
         holder.itemView.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN &&

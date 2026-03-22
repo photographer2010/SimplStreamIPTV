@@ -3,25 +3,28 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!-- SimplStream logo - stylized "S" with streaming waves -->
+
     <group
-        android:translateX="24"
-        android:translateY="24">
-        
-        <!-- Main "S" shape with gradient-like effect using multiple paths -->
-        <!-- Top curve of S -->
+        android:translateX="22"
+        android:translateY="22">
+
+        <!-- Outer glow ring — subtle blue circle behind the logo -->
         <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M45,12 C45,12 38,12 30,12 C18,12 12,20 12,26 C12,32 16,38 26,40 L38,43 C44,44.5 47,48 47,52 C47,57 43,60 36,60 L15,60"
-            android:strokeWidth="6"
+            android:fillColor="#1A2563EB"
+            android:pathData="M32,0 A32,32,0,1,1,32,64 A32,32,0,1,1,32,0 Z"/>
+
+        <!-- Play triangle — the streaming symbol, offset to the left -->
+        <path
+            android:fillColor="#2563EB"
+            android:pathData="M22,18 L42,32 L22,46 Z"/>
+
+        <!-- Bold "S" stroke overlaid — the SimplStream identity -->
+        <path
+            android:pathData="M44,16 L34,16 C27,16 22,20.5 22,26 C22,31.5 26,35.5 33,37 L38,38 C43,39 46,42 46,46 C46,50.5 42,54 36,54 L24,54"
+            android:strokeWidth="5"
             android:strokeColor="#FFFFFF"
-            android:strokeLineCap="round"/>
-        
-        <!-- Stylized play button integrated into S -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M30,28 L40,35 L30,42 Z"/>
-            
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"/>
+
     </group>
 </vector>

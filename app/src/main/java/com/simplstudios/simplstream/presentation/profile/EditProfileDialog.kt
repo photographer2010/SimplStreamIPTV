@@ -22,7 +22,8 @@ class EditProfileDialog(
     private val profile: Profile,
     private val onProfileUpdated: (name: String, avatarIndex: Int, pin: String?, isKids: Boolean, clearPin: Boolean) -> Unit,
     private val onProfileDeleted: () -> Unit,
-    private val onVerifyPin: (pin: String, onSuccess: () -> Unit, onError: () -> Unit) -> Unit
+    private val onVerifyPin: (pin: String, onSuccess: () -> Unit, onError: () -> Unit) -> Unit,
+    private val onVerifyParentalPin: ((pin: String, onSuccess: () -> Unit, onError: () -> Unit) -> Unit)? = null
 ) : DialogFragment() {
     
     private var selectedAvatarIndex = profile.avatarIndex
@@ -124,8 +125,11 @@ class EditProfileDialog(
             
             // Delete button
             deleteButton.setOnClickListener {
-                if (profile.hasPin) {
-                    // Require PIN verification before deletion
+                if (profile.isKidsProfile && onVerifyParentalPin != null) {
+                    // Kids profile — require parental PIN
+                    showParentalPinVerificationForDelete()
+                } else if (profile.hasPin) {
+                    // Require profile PIN verification before deletion
                     showPinVerificationForDelete()
                 } else {
                     showDeleteConfirmation()
@@ -189,6 +193,50 @@ class EditProfileDialog(
         dialog.show()
     }
     
+    private fun showParentalPinVerificationForDelete() {
+        val dialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_pin_verify_delete, null)
+
+        val pinInput = dialogView.findViewById<EditText>(R.id.pin_input)
+        val errorText = dialogView.findViewById<TextView>(R.id.error_text)
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setTitle("Parental PIN Required")
+            .setMessage("Enter the parental PIN to delete this kids profile")
+            .setView(dialogView)
+            .setPositiveButton("Verify & Delete", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.setOnShowListener {
+            val positiveButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+            positiveButton.setOnClickListener {
+                val enteredPin = pinInput.text.toString()
+                if (enteredPin.length != 4) {
+                    errorText.text = "PIN must be 4 digits"
+                    errorText.visibility = View.VISIBLE
+                    return@setOnClickListener
+                }
+
+                onVerifyParentalPin?.invoke(
+                    enteredPin,
+                    {
+                        dialog.dismiss()
+                        showDeleteConfirmation()
+                    },
+                    {
+                        errorText.text = "Incorrect parental PIN"
+                        errorText.visibility = View.VISIBLE
+                        pinInput.text?.clear()
+                    }
+                )
+            }
+            pinInput.requestFocus()
+        }
+
+        dialog.show()
+    }
+
     private fun showDeleteConfirmation() {
         androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
             .setTitle("Delete Profile")
@@ -258,8 +306,8 @@ class EditAvatarAdapter(
             // Focus handling
             itemView.isFocusable = true
             itemView.setOnFocusChangeListener { _, hasFocus ->
-                val scale = if (hasFocus) 1.2f else 1.0f
-                itemView.animate().scaleX(scale).scaleY(scale).setDuration(100).start()
+                val scale = if (hasFocus) 1.04f else 1.0f
+                itemView.animate().alpha(if (hasFocus) 1f else 0.7f).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
             }
         }
     }

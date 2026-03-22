@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private fun List<Content>.filterForKids(): List<Content> = filter { it.isKidsSafe }
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val contentRepository: ContentRepository,
@@ -30,9 +32,21 @@ class HomeViewModel @Inject constructor(
     private val _selectedContent = MutableStateFlow<Content?>(null)
     val selectedContent: StateFlow<Content?> = _selectedContent.asStateFlow()
     
+    private var isKidsMode = false
+
     init {
+        observeKidsMode()
         observeUserContent()
         loadContent()
+    }
+
+    private fun observeKidsMode() {
+        viewModelScope.launch {
+            sessionManager.isKidsProfile.collect { isKids ->
+                isKidsMode = isKids
+                _uiState.update { it.copy(isKidsProfile = isKids) }
+            }
+        }
     }
     
     private fun observeUserContent() {
@@ -123,33 +137,38 @@ class HomeViewModel @Inject constructor(
 data class HomeUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    
+    val isKidsProfile: Boolean = false,
+
     // User-specific content
     val continueWatching: List<WatchHistory> = emptyList(),
     val myList: List<WatchlistItem> = emptyList(),
-    
+
     // Featured & Trending
     val featuredContent: List<Content> = emptyList(),
     val trending: List<Content> = emptyList(),
-    
+
     // Movies
     val popularMovies: List<Content> = emptyList(),
     val topRatedMovies: List<Content> = emptyList(),
     val nowPlayingMovies: List<Content> = emptyList(),
-    
+
     // TV Shows
     val popularTvShows: List<Content> = emptyList(),
     val topRatedTvShows: List<Content> = emptyList(),
     val onTheAirTvShows: List<Content> = emptyList(),
-    
+
     // Genres
     val movieGenres: List<Genre> = emptyList(),
     val tvGenres: List<Genre> = emptyList()
 ) {
+    private fun List<Content>.kidsFilter(): List<Content> =
+        if (isKidsProfile) filter { it.isKidsSafe } else this
+
     val hasContinueWatching: Boolean get() = continueWatching.isNotEmpty()
     val hasMyList: Boolean get() = myList.isNotEmpty()
-    val currentFeatured: Content? get() = featuredContent.firstOrNull()
-    
+    val filteredFeaturedContent: List<Content> get() = featuredContent.kidsFilter()
+    val currentFeatured: Content? get() = filteredFeaturedContent.firstOrNull()
+
     val contentRows: List<ContentRow> get() = buildList {
         if (hasContinueWatching) {
             add(ContentRow.ContinueWatchingRow(continueWatching))
@@ -157,27 +176,20 @@ data class HomeUiState(
         if (hasMyList) {
             add(ContentRow.MyListRow(myList.map { it.toContent() }))
         }
-        if (trending.isNotEmpty()) {
-            add(ContentRow.SimpleRow("Trending Now", trending))
-        }
-        if (popularMovies.isNotEmpty()) {
-            add(ContentRow.SimpleRow("Popular Movies", popularMovies))
-        }
-        if (topRatedMovies.isNotEmpty()) {
-            add(ContentRow.SimpleRow("Top Rated Movies", topRatedMovies))
-        }
-        if (nowPlayingMovies.isNotEmpty()) {
-            add(ContentRow.SimpleRow("Now Playing", nowPlayingMovies))
-        }
-        if (popularTvShows.isNotEmpty()) {
-            add(ContentRow.SimpleRow("Popular TV Shows", popularTvShows))
-        }
-        if (topRatedTvShows.isNotEmpty()) {
-            add(ContentRow.SimpleRow("Top Rated TV Shows", topRatedTvShows))
-        }
-        if (onTheAirTvShows.isNotEmpty()) {
-            add(ContentRow.SimpleRow("On The Air", onTheAirTvShows))
-        }
+        val t = trending.kidsFilter()
+        if (t.isNotEmpty()) add(ContentRow.SimpleRow("Trending Now", t))
+        val pm = popularMovies.kidsFilter()
+        if (pm.isNotEmpty()) add(ContentRow.SimpleRow("Popular Movies", pm))
+        val trm = topRatedMovies.kidsFilter()
+        if (trm.isNotEmpty()) add(ContentRow.SimpleRow("Top Rated Movies", trm))
+        val np = nowPlayingMovies.kidsFilter()
+        if (np.isNotEmpty()) add(ContentRow.SimpleRow("Now Playing", np))
+        val ptv = popularTvShows.kidsFilter()
+        if (ptv.isNotEmpty()) add(ContentRow.SimpleRow("Popular TV Shows", ptv))
+        val trtv = topRatedTvShows.kidsFilter()
+        if (trtv.isNotEmpty()) add(ContentRow.SimpleRow("Top Rated TV Shows", trtv))
+        val ota = onTheAirTvShows.kidsFilter()
+        if (ota.isNotEmpty()) add(ContentRow.SimpleRow("On The Air", ota))
     }
 }
 

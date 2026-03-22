@@ -5,20 +5,32 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@color/brand_dark</item>
         <item name="android:colorBackground">@color/brand_dark</item>
-        
+
+        <!-- Default Font - Outfit for entire app -->
+        <item name="android:fontFamily">@font/outfit_medium</item>
+        <!-- Force Outfit on ALL TextViews (overrides Leanback internal styles) -->
+        <item name="android:textViewStyle">@style/Widget.SimplStream.TextView</item>
+
+        <!-- Disable Android TV default focus highlight (dashed rectangle) -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
+
         <!-- Brand Colors - Blue Palette -->
         <item name="colorPrimary">@color/simpl_blue</item>
         <item name="colorPrimaryDark">@color/simpl_blue_dark</item>
         <item name="colorAccent">@color/simpl_blue_light</item>
-        
+
         <!-- Text Colors -->
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
-        
+
         <!-- Leanback Brand -->
         <item name="defaultBrandColor">@color/simpl_blue</item>
         <item name="defaultBrandColorDark">@color/simpl_blue_dark</item>
         
+        <!-- Leanback Brand - search orb and UI accent -->
+        <item name="defaultSearchColor">@color/simpl_blue</item>
+        <item name="defaultSearchBrightColor">@color/simpl_blue_light</item>
+
         <!-- Leanback Browse (legacy support) -->
         <item name="browseTitleTextStyle">@style/SimplStream.BrowseTitleText</item>
         <item name="browseRowsMarginTop">48dp</item>
@@ -31,22 +43,35 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@color/brand_dark</item>
         <item name="android:colorBackground">@color/brand_dark</item>
-        
+
+        <!-- Default Font - Outfit for entire app -->
+        <item name="android:fontFamily">@font/outfit_medium</item>
+        <!-- Force Outfit on ALL TextViews -->
+        <item name="android:textViewStyle">@style/Widget.SimplStream.TextView</item>
+
+        <!-- Disable Android TV default focus highlight (dashed rectangle) -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
+
         <!-- Brand Colors - Blue Palette -->
         <item name="colorPrimary">@color/simpl_blue</item>
         <item name="colorPrimaryDark">@color/simpl_blue_dark</item>
         <item name="colorAccent">@color/simpl_blue_light</item>
-        
+
         <!-- Text Colors -->
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
-    
+
     <!-- Player Theme (AppCompat-based for ComponentActivity + ExoPlayer) -->
     <style name="Theme.SimplStream.Player" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@color/black</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:fontFamily">@font/outfit_medium</item>
+        <!-- Force Outfit on ALL TextViews -->
+        <item name="android:textViewStyle">@style/Widget.SimplStream.TextView</item>
+        <!-- Disable Android TV default focus highlight -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
         <item name="colorPrimary">@color/simpl_blue</item>
         <item name="colorPrimaryDark">@color/simpl_blue_dark</item>
         <item name="colorAccent">@color/simpl_blue_light</item>
@@ -57,25 +82,34 @@
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
     
-    <!-- Dialog Theme - Netflix Style Glass -->
+    <!-- Dialog Theme - Modern Glass -->
     <style name="SimplStreamDialogTheme" parent="Theme.MaterialComponents.Dialog">
-        <item name="android:windowBackground">@color/brand_card</item>
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:fontFamily">@font/outfit_medium</item>
         <item name="colorPrimary">@color/simpl_blue</item>
         <item name="colorAccent">@color/simpl_blue</item>
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="shapeAppearanceOverlay">@style/DialogShapeAppearance</item>
+        <item name="android:windowAnimationStyle">@style/DialogAnimation</item>
     </style>
-    
+
     <!-- Dialog Rounded Corners -->
     <style name="DialogShapeAppearance">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/dialog_corner_radius</item>
     </style>
+
+    <!-- Dialog fade+scale animation -->
+    <style name="DialogAnimation" parent="android:Animation.Dialog">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
     
     <!-- Alert Dialog Theme for Player Quality Selection -->
     <style name="AlertDialogTheme" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
         <item name="android:background">@color/brand_card</item>
+        <item name="android:fontFamily">@font/outfit_medium</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="colorPrimary">@color/simpl_blue</item>

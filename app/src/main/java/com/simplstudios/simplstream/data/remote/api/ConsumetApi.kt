@@ -90,6 +90,7 @@ data class ConsumetEpisode(
 )
 
 data class ConsumetWatchResponse(
+    val message: String? = null,  // Error message when watch fails (e.g. "Something went wrong...")
     val headers: ConsumetHeaders? = null,
     val sources: List<ConsumetSource>? = null,
     val subtitles: List<ConsumetSubtitle>? = null

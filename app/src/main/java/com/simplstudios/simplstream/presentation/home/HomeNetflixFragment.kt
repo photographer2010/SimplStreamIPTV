@@ -86,14 +86,14 @@ class HomeNetflixFragment : Fragment() {
     }
     
     private fun setupHeroButtons() {
-        // Focus handling for hero buttons
+        // Focus handling for hero buttons — no scale, just alpha change
         listOf(btnPlay, btnMoreInfo).forEach { btn ->
             btn.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) {
-                    v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
-                } else {
-                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-                }
+                v.animate()
+                    .alpha(if (hasFocus) 1f else 0.8f)
+                    .setDuration(120)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
             }
         }
         
@@ -113,7 +113,7 @@ class HomeNetflixFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     if (!state.isLoading) {
-                        updateHeroCarousel(state.featuredContent)
+                        updateHeroCarousel(state.filteredFeaturedContent)
                         updateContentRows(state)
                     }
                 }
@@ -141,6 +141,8 @@ class HomeNetflixFragment : Fragment() {
         
         heroTitle.text = content.title
         heroRating.text = content.ratingDisplay
+        view?.findViewById<View>(R.id.hero_rating_container)?.visibility =
+            if (content.voteAverage > 0f) View.VISIBLE else View.GONE
         heroYear.text = content.year ?: ""
         heroGenre.text = when (content.mediaType) {
             MediaType.MOVIE -> "Movie"
@@ -206,52 +208,20 @@ class HomeNetflixFragment : Fragment() {
     
     private fun updateContentRows(state: HomeUiState) {
         rowsContainer.removeAllViews()
-        
-        // Continue Watching (if any)
-        if (state.hasContinueWatching) {
-            val continueItems = state.continueWatching.map { it.toContent() }
-            addContentRow("Continue Watching", continueItems)
-        }
-        
-        // My List (if any)
-        if (state.hasMyList) {
-            val myListItems = state.myList.map { it.toContent() }
-            addContentRow("My List", myListItems)
-        }
-        
-        // Trending
-        if (state.trending.isNotEmpty()) {
-            addContentRow("Trending Now", state.trending)
-        }
-        
-        // Popular Movies
-        if (state.popularMovies.isNotEmpty()) {
-            addContentRow("Popular Movies", state.popularMovies)
-        }
-        
-        // Top Rated Movies
-        if (state.topRatedMovies.isNotEmpty()) {
-            addContentRow("Top Rated Movies", state.topRatedMovies)
-        }
-        
-        // Now Playing
-        if (state.nowPlayingMovies.isNotEmpty()) {
-            addContentRow("Now Playing", state.nowPlayingMovies)
-        }
-        
-        // Popular TV Shows
-        if (state.popularTvShows.isNotEmpty()) {
-            addContentRow("Popular TV Shows", state.popularTvShows)
-        }
-        
-        // Top Rated TV Shows
-        if (state.topRatedTvShows.isNotEmpty()) {
-            addContentRow("Top Rated TV Shows", state.topRatedTvShows)
-        }
-        
-        // On The Air
-        if (state.onTheAirTvShows.isNotEmpty()) {
-            addContentRow("On The Air", state.onTheAirTvShows)
+
+        // Use contentRows which applies kidsFilter() automatically
+        for (row in state.contentRows) {
+            when (row) {
+                is ContentRow.ContinueWatchingRow -> {
+                    addContentRow(row.title, row.items.map { it.toContent() })
+                }
+                is ContentRow.MyListRow -> {
+                    addContentRow(row.title, row.items)
+                }
+                is ContentRow.SimpleRow -> {
+                    addContentRow(row.title, row.items)
+                }
+            }
         }
     }
     
@@ -311,8 +281,9 @@ class LandscapeCardAdapter(
         val titleText: TextView = view.findViewById(R.id.title_text)
         val metadataText: TextView = view.findViewById(R.id.metadata_text)
         val ratingText: TextView = view.findViewById(R.id.rating_text)
+        val ratingContainer: View = view.findViewById(R.id.rating_container)
         val typeIndicator: View = view.findViewById(R.id.type_indicator)
-        val focusBorder: View = view.findViewById(R.id.focus_border)
+        val cardContainer: androidx.cardview.widget.CardView = view.findViewById(R.id.card_container)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -338,6 +309,7 @@ class LandscapeCardAdapter(
             append(if (content.mediaType == MediaType.MOVIE) "Movie" else "Series")
         }
         holder.ratingText.text = content.ratingDisplay
+        holder.ratingContainer.visibility = if (content.voteAverage > 0f) View.VISIBLE else View.GONE
         
         // Type indicator color
         val indicatorColor = when (content.mediaType) {
@@ -346,21 +318,20 @@ class LandscapeCardAdapter(
         }
         holder.typeIndicator.setBackgroundColor(indicatorColor)
         
-        // Focus handling
+        // Focus handling — clip to outline to prevent black rect on scale
+        holder.cardContainer.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+        holder.cardContainer.clipToOutline = true
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            holder.focusBorder.visibility = if (hasFocus) View.VISIBLE else View.INVISIBLE
-            
-            val scale = if (hasFocus) 1.08f else 1.0f
+            val scale = if (hasFocus) 1.03f else 1.0f
             v.animate()
                 .scaleX(scale)
                 .scaleY(scale)
-                .setDuration(150)
+                .alpha(if (hasFocus) 1f else 0.85f)
+                .setDuration(120)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .start()
-            
-            // Lift card when focused
-            v.elevation = if (hasFocus) 16f else 0f
         }
-        
+
         holder.itemView.setOnClickListener {
             onItemClick(content)
         }

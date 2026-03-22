@@ -370,55 +370,61 @@ class RecommendationRepositoryImpl @Inject constructor(
     }
     
     /**
-     * Analyze watch history to determine genre preferences
+     * Analyze watch history to determine genre preferences.
+     * Uses parallel API calls (limited batch) for fast loading.
      */
     private suspend fun analyzeGenrePreferences(
         watchHistory: List<WatchHistoryEntity>
-    ): List<GenrePreference> {
+    ): List<GenrePreference> = coroutineScope {
         // Genre ID -> (watchCount, completedCount)
         val genreStats = mutableMapOf<Int, Pair<Int, Int>>()
-        
-        // For each watched item, we'd ideally look up its genres
-        // Since we don't store genres in history, we'll use content lookups
-        // This is a simplified version - in production, cache genre info
-        
-        watchHistory.forEach { item ->
-            try {
-                val genres = if (item.mediaType == "movie") {
-                    contentRepository.getMovieDetails(item.contentId).getOrNull()?.genres
-                } else {
-                    contentRepository.getTvShowDetails(item.contentId).getOrNull()?.genres
-                } ?: emptyList()
-                
-                genres.forEach { genre ->
-                    val current = genreStats[genre.id] ?: Pair(0, 0)
-                    val completed = if (item.isCompleted) 1 else 0
-                    genreStats[genre.id] = Pair(current.first + 1, current.second + completed)
+
+        // Only look up the most recent 10 items to keep it fast
+        val recentItems = watchHistory.take(10)
+
+        // Parallel genre lookups
+        val genreResults = recentItems.map { item ->
+            async {
+                try {
+                    val genres = if (item.mediaType == "movie") {
+                        contentRepository.getMovieDetails(item.contentId).getOrNull()?.genres
+                    } else {
+                        contentRepository.getTvShowDetails(item.contentId).getOrNull()?.genres
+                    } ?: emptyList()
+                    Pair(item, genres)
+                } catch (e: Exception) {
+                    Pair(item, emptyList())
                 }
-            } catch (e: Exception) {
-                // Skip items we can't look up
+            }
+        }.awaitAll()
+
+        genreResults.forEach { (item, genres) ->
+            genres.forEach { genre ->
+                val current = genreStats[genre.id] ?: Pair(0, 0)
+                val completed = if (item.isCompleted) 1 else 0
+                genreStats[genre.id] = Pair(current.first + 1, current.second + completed)
             }
         }
-        
+
         // Convert to preferences
-        val totalWatched = watchHistory.size.coerceAtLeast(1)
-        
-        return genreStats.map { (genreId, stats) ->
+        val totalWatched = recentItems.size.coerceAtLeast(1)
+
+        genreStats.map { (genreId, stats) ->
             val (watchCount, completedCount) = stats
             val completionRate = if (watchCount > 0) completedCount.toFloat() / watchCount else 0f
             val affinity = (watchCount.toFloat() / totalWatched).coerceIn(0f, 1f)
-            
+
             GenrePreference(
                 genreId = genreId,
                 genreName = genreCache[genreId] ?: "Genre $genreId",
                 watchCount = watchCount,
                 completionRate = completionRate,
-                avgRating = 7f, // Would need to track actual ratings
+                avgRating = 7f,
                 affinity = affinity
             )
         }
             .sortedByDescending { it.watchCount * (1 + it.completionRate) }
-            .take(10) // Top 10 genres
+            .take(10)
     }
     
     private fun analyzeWatchTimePatterns(watchHistory: List<WatchHistoryEntity>): WatchTimePreference {
@@ -703,57 +709,45 @@ class RecommendationRepositoryImpl @Inject constructor(
     }
     
     /**
-     * Score content based on how well it matches user's taste profile
+     * Score content based on how well it matches user's taste profile.
+     * Uses lightweight scoring without per-item API calls for fast loading.
      */
-    private suspend fun scoreContent(
+    private fun scoreContent(
         content: Content,
         tasteProfile: TasteProfile?,
         primaryReason: MatchReasonType
     ): RecommendedContent {
         val reasons = mutableListOf<MatchReason>()
         var score = 50 // Base score
-        
+
         // Rating bonus (7.0+ gets bonus, 8.0+ gets more)
         if (content.voteAverage >= 8.0f) {
             score += 20
             reasons.add(MatchReason(MatchReasonType.HIGHLY_RATED, "Critically acclaimed", 0.2f))
         } else if (content.voteAverage >= 7.0f) {
             score += 10
+            reasons.add(MatchReason(MatchReasonType.HIGHLY_RATED, "Well rated", 0.1f))
+        } else if (content.voteAverage >= 6.0f) {
+            score += 5
         }
-        
-        // Genre matching (if we have taste profile)
+
+        // Media type preference bonus
         if (tasteProfile != null) {
-            // Get genres for content (simplified - in production, cache this)
-            val contentGenres = try {
-                if (content.mediaType == MediaType.MOVIE) {
-                    contentRepository.getMovieDetails(content.id).getOrNull()?.genres?.map { it.id }
-                } else {
-                    contentRepository.getTvShowDetails(content.id).getOrNull()?.genres?.map { it.id }
-                } ?: emptyList()
-            } catch (e: Exception) {
-                emptyList()
-            }
-            
-            tasteProfile.preferredGenres.forEach { genrePref ->
-                if (contentGenres.contains(genrePref.genreId)) {
-                    val genreBonus = (genrePref.affinity * 30).toInt()
-                    score += genreBonus
-                    reasons.add(
-                        MatchReason(
-                            MatchReasonType.GENRE_MATCH,
-                            "You enjoy ${genrePref.genreName}",
-                            genrePref.affinity
-                        )
-                    )
-                }
-            }
-            
-            // Media type preference bonus
             if (tasteProfile.preferredMediaType == content.mediaType) {
-                score += 5
+                score += 10
+                reasons.add(
+                    MatchReason(
+                        MatchReasonType.GENRE_MATCH,
+                        "Matches your preferred type",
+                        0.15f
+                    )
+                )
             }
+
+            // Add variety with slight randomization
+            score += Random.nextInt(0, 8)
         }
-        
+
         // Add primary reason
         reasons.add(
             MatchReason(
@@ -762,10 +756,10 @@ class RecommendationRepositoryImpl @Inject constructor(
                 weight = 0.3f
             )
         )
-        
+
         // Clamp score to 0-99
         score = score.coerceIn(0, 99)
-        
+
         return RecommendedContent(
             content = content,
             matchScore = score,

@@ -1,22 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Profile card - clean focus style without borders -->
+<!-- Profile card background - subtle dark card with rounded corners -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
+            <solid android:color="#1A2563EB" />
             <corners android:radius="16dp" />
-            <solid android:color="#332563EB" />
-        </shape>
-    </item>
-    <item android:state_selected="true">
-        <shape android:shape="rectangle">
-            <corners android:radius="16dp" />
-            <solid android:color="#332563EB" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
+            <solid android:color="#1a1c23" />
             <corners android:radius="16dp" />
-            <solid android:color="@color/background_card" />
         </shape>
     </item>
 </selector>

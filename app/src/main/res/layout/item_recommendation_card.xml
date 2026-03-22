@@ -18,8 +18,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardCornerRadius="@dimen/card_corner_radius"
-        app:cardBackgroundColor="@color/brand_card"
-        app:cardElevation="0dp">
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardElevation="0dp"
+        android:stateListAnimator="@null">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -108,14 +109,6 @@
                     tools:text="8.5" />
 
             </LinearLayout>
-
-            <!-- Focus border overlay -->
-            <View
-                android:id="@+id/focus_border"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_card_focused"
-                android:visibility="invisible" />
 
         </FrameLayout>
 

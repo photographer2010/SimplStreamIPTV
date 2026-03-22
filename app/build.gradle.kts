@@ -15,8 +15,8 @@ android {
         applicationId = "com.simplstudios.simplstream"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = 4
+        versionName = "4.0.0"
 
         // TMDB API Configuration
         buildConfigField("String", "TMDB_API_KEY", "\"335a2d8a6455213ca6201aba18056860\"")

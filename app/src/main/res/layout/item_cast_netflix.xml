@@ -32,8 +32,9 @@
             android:layout_height="80dp"
             android:layout_gravity="center"
             app:cardCornerRadius="40dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/brand_card">
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@android:color/transparent"
+            android:stateListAnimator="@null">
 
             <ImageView
                 android:id="@+id/profile_image"

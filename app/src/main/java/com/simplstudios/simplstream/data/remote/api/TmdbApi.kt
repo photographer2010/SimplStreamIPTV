@@ -76,7 +76,7 @@ interface TmdbApi {
     @GET("tv/{tv_id}")
     suspend fun getTvShowDetails(
         @Path("tv_id") tvId: Int,
-        @Query("append_to_response") appendToResponse: String = "credits,recommendations,videos"
+        @Query("append_to_response") appendToResponse: String = "credits,recommendations,videos,external_ids"
     ): TvShowDetailDto
 
     @GET("tv/{tv_id}/season/{season_number}")

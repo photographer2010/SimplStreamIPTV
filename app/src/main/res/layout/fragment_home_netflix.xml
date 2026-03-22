@@ -66,27 +66,28 @@
 
                     <!-- Rating Badge -->
                     <LinearLayout
+                        android:id="@+id/hero_rating_container"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:background="@drawable/bg_rating_badge"
-                        android:paddingHorizontal="@dimen/rating_badge_padding_horizontal"
-                        android:paddingVertical="@dimen/rating_badge_padding_vertical"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="4dp"
                         android:gravity="center_vertical">
 
                         <ImageView
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
                             android:src="@drawable/ic_star"
-                            app:tint="@color/white" />
+                            app:tint="@color/rating_gold" />
 
                         <TextView
                             android:id="@+id/hero_rating"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"
+                            android:textColor="@color/rating_gold"
+                            android:textSize="12sp"
                             android:fontFamily="@font/outfit_bold"
                             tools:text="8.5" />
 
@@ -147,7 +148,8 @@
                         android:drawablePadding="8dp"
                         style="@style/Widget.SimplStream.Button.Primary"
                         android:focusable="true"
-                        android:focusableInTouchMode="true" />
+                        android:focusableInTouchMode="true"
+                        android:defaultFocusHighlightEnabled="false" />
 
                     <Button
                         android:id="@+id/btn_more_info"
@@ -159,7 +161,8 @@
                         android:layout_marginStart="16dp"
                         style="@style/Widget.SimplStream.Button.Secondary"
                         android:focusable="true"
-                        android:focusableInTouchMode="true" />
+                        android:focusableInTouchMode="true"
+                        android:defaultFocusHighlightEnabled="false" />
 
                 </LinearLayout>
 

@@ -17,8 +17,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardCornerRadius="@dimen/card_corner_radius"
-        app:cardBackgroundColor="@color/brand_card"
-        app:cardElevation="0dp">
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardElevation="0dp"
+        android:stateListAnimator="@null">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -49,29 +50,30 @@
 
             <!-- Rating Badge (top right) -->
             <LinearLayout
+                android:id="@+id/rating_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|end"
-                android:layout_margin="8dp"
+                android:layout_margin="6dp"
                 android:background="@drawable/bg_rating_badge"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="3dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
                 <ImageView
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
                     android:src="@drawable/ic_star"
-                    app:tint="@color/white" />
+                    app:tint="@color/rating_gold" />
 
                 <TextView
                     android:id="@+id/rating_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textColor="@color/white"
-                    android:textSize="11sp"
+                    android:layout_marginStart="3dp"
+                    android:textColor="@color/rating_gold"
+                    android:textSize="10sp"
                     android:fontFamily="@font/outfit_bold"
                     tools:text="8.5" />
 
@@ -109,14 +111,6 @@
                     tools:text="2024 • Movie" />
 
             </LinearLayout>
-
-            <!-- Focus border overlay (invisible until focused) -->
-            <View
-                android:id="@+id/focus_border"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_card_focused"
-                android:visibility="invisible" />
 
         </FrameLayout>
 
