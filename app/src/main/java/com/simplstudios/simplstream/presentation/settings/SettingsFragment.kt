@@ -3,10 +3,12 @@ package com.simplstudios.simplstream.presentation.settings
 import android.app.AlertDialog
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.SwitchCompat
@@ -47,6 +49,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private lateinit var switchProfileRow: View
     private lateinit var signOutRow: View
     private lateinit var deleteProfileRow: View
+    private lateinit var aboutRow: View
+    private lateinit var termsRow: View
     private lateinit var cancelButton: Button
     private lateinit var saveButton: Button
 
@@ -90,6 +94,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         switchProfileRow = view.findViewById(R.id.switch_profile_row) ?: throw IllegalStateException("switch_profile_row not found")
         signOutRow = view.findViewById(R.id.sign_out_row) ?: throw IllegalStateException("sign_out_row not found")
         deleteProfileRow = view.findViewById(R.id.delete_profile_row) ?: throw IllegalStateException("delete_profile_row not found")
+        aboutRow = view.findViewById(R.id.about_row) ?: throw IllegalStateException("about_row not found")
+        termsRow = view.findViewById(R.id.terms_row) ?: throw IllegalStateException("terms_row not found")
         cancelButton = view.findViewById(R.id.cancel_button) ?: throw IllegalStateException("cancel_button not found")
         saveButton = view.findViewById(R.id.save_button) ?: throw IllegalStateException("save_button not found")
     }
@@ -172,6 +178,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         // Delete Profile
         deleteProfileRow.setOnClickListener {
             handleDeleteProfile()
+        }
+
+        // About
+        aboutRow.setOnClickListener {
+            showAboutDialog()
+        }
+
+        // Terms & Conditions
+        termsRow.setOnClickListener {
+            showTermsDialog()
         }
 
         // Cancel
@@ -687,6 +703,146 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             isKidsProfile = isKids,
             clearPin = false
         )
+    }
+
+    private fun showAboutDialog() {
+        val content = """
+SimplStreamTV v4.0
+
+Created by Andy "Apple"
+Founded by SimplStudios
+
+SimplStreamTV is a free, ad-free streaming application built from the ground up for Android TV and Fire TV devices.
+
+Our mission is simple: give everyone access to entertainment without paywalls, ads, or compromises. We believe streaming should be free, fast, and beautiful.
+
+SimplStreamTV does not host, store, upload, or distribute any media content. All media metadata — including titles, descriptions, ratings, posters, and backdrops — is provided by The Movie Database (TMDB). SimplStreamTV acts solely as a content discovery and organization tool.
+
+All video streams are sourced from publicly available, third-party sources on the internet. SimplStreamTV does not operate, control, or maintain any streaming servers. We have no affiliation with any content provider or hosting service.
+
+SimplStreamTV is provided for educational and personal use only.
+
+Website: simplstudios.vercel.app
+Contact: simplstudios@protonmail.com
+
+© ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} SimplStudios. All rights reserved.
+        """.trimIndent()
+
+        showLegalDialog("About SimplStream", content)
+    }
+
+    private fun showTermsDialog() {
+        val content = """
+TERMS & CONDITIONS
+Last Updated: March 2026
+
+By downloading, installing, or using SimplStreamTV ("the App"), you agree to these Terms & Conditions. If you do not agree, do not use the App.
+
+1. ACCEPTANCE OF TERMS
+
+By accessing or using SimplStreamTV, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions and our Privacy practices. SimplStudios reserves the right to modify these terms at any time.
+
+2. NATURE OF SERVICE
+
+SimplStreamTV is a content discovery and media organization application. The App provides a user interface to browse, search, and organize media information. All media metadata is sourced from The Movie Database (TMDB) API.
+
+SimplStreamTV does NOT host, upload, store, or distribute any video content, media files, or copyrighted material on its own servers. The App does not control, operate, or maintain any third-party content sources. Any video streams accessed through the App are sourced from publicly available, third-party locations on the internet that are not owned, operated, or affiliated with SimplStudios.
+
+3. USER RESPONSIBILITY
+
+You are solely responsible for your use of the App and for ensuring that your use complies with all applicable local, state, national, and international laws and regulations. You agree not to use the App for any unlawful purpose.
+
+You acknowledge that accessing copyrighted content without proper authorization may violate copyright laws in your jurisdiction. SimplStudios does not encourage, condone, or promote copyright infringement or any other illegal activity.
+
+4. NO WARRANTY
+
+SimplStreamTV is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, either express or implied. SimplStudios does not warrant that the App will be uninterrupted, error-free, or free of harmful components.
+
+SimplStudios makes no representations or warranties regarding the accuracy, reliability, completeness, or availability of any third-party content accessible through the App.
+
+5. LIMITATION OF LIABILITY
+
+To the maximum extent permitted by applicable law, SimplStudios, its founder, contributors, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits, data, or goodwill arising out of or in connection with your use of the App.
+
+6. INTELLECTUAL PROPERTY
+
+The SimplStreamTV application, its original source code, user interface design, branding, and logos are the property of SimplStudios. TMDB data is used under TMDB's terms of service. All other trademarks, service marks, and content belong to their respective owners.
+
+7. DMCA & COPYRIGHT NOTICE
+
+SimplStudios respects the intellectual property rights of others and expects users of the App to do the same.
+
+SimplStreamTV operates under the safe harbor provisions of the Digital Millennium Copyright Act (DMCA), 17 U.S.C. § 512. We do not host any infringing content. Since all video content is sourced from third-party locations that we do not own or control, any copyright concerns regarding specific video content should be directed to the respective third-party hosting providers.
+
+If you are a copyright owner or authorized agent and believe that content accessible through a third-party source linked by the App infringes your copyrights, you may submit a DMCA takedown notice to:
+
+SimplStudios
+Email: simplstudios@protonmail.com
+Website: simplstudios.vercel.app
+
+Your DMCA notice must include:
+
+  • A description of the copyrighted work you claim has been infringed
+  • The specific URL or description of where the allegedly infringing material can be found
+  • Your contact information (name, address, email, phone number)
+  • A statement that you have a good faith belief that the use is not authorized by the copyright owner, its agent, or the law
+  • A statement, under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorized to act on behalf of the owner
+  • Your physical or electronic signature
+
+Upon receiving a valid DMCA notice, SimplStudios will act expeditiously to investigate and, if appropriate, remove or disable access to the material in question.
+
+8. PRIVACY
+
+SimplStreamTV stores all user data (profiles, watchlists, viewing history, preferences) locally on your device. We do not collect, transmit, or store any personal information on external servers. We do not use analytics, tracking, or advertising SDKs. Your data stays on your device.
+
+9. CHILDREN'S SAFETY
+
+SimplStreamTV includes a Kids Mode feature with PIN-protected parental controls. Parents and guardians are responsible for configuring and supervising the use of these features. SimplStudios does not guarantee that all content will be appropriately filtered in Kids Mode.
+
+10. THIRD-PARTY SERVICES
+
+SimplStreamTV interacts with third-party APIs and services (such as TMDB) for media metadata. SimplStudios is not responsible for the availability, accuracy, or policies of any third-party services.
+
+11. TERMINATION
+
+SimplStudios reserves the right to modify, suspend, or discontinue the App at any time without prior notice.
+
+12. GOVERNING LAW
+
+These Terms shall be governed by and construed in accordance with applicable laws, without regard to conflict of law principles.
+
+13. CONTACT
+
+For any questions, concerns, or DMCA notices:
+
+SimplStudios
+Email: simplstudios@protonmail.com
+Website: simplstudios.vercel.app
+Founded by Andy "Apple"
+
+By using SimplStreamTV, you acknowledge that you have read and understood these Terms & Conditions and agree to be bound by them.
+        """.trimIndent()
+
+        showLegalDialog("Terms & Conditions", content)
+    }
+
+    private fun showLegalDialog(title: String, content: String) {
+        val scrollView = ScrollView(requireContext()).apply {
+            setPadding(48, 24, 48, 24)
+        }
+        val textView = TextView(requireContext()).apply {
+            text = content
+            setTextColor(resources.getColor(R.color.text_secondary, null))
+            textSize = 14f
+            setLineSpacing(0f, 1.4f)
+        }
+        scrollView.addView(textView)
+
+        AlertDialog.Builder(requireContext(), R.style.SimplStreamDialogTheme)
+            .setTitle(title)
+            .setView(scrollView)
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     private fun Int.dpToPx(): Int {
