@@ -203,7 +203,7 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
   }, [credentials, activeQuery.isFetching, activeQuery.data, activeQuery.isError, activeQuery.isSuccess]);
 
   const errorMsg =
-    activeQuery.error instanceof Error ? activeQuery.error.message : 'Connection failed';
+    activeQuery.error instanceof Error ? activeQuery.error.message : 'Connection failed. Please check your settings and internet connection, then try again.';
 
   const filteredChannels = useMemo(() => {
     return channels.filter(ch => {
