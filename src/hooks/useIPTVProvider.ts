@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { IPTVChannel, IPTVCategory, XtreamCredentials, XtreamUserInfo, XtreamServerInfo } from '../types';
+import { proxyStreamUrl } from '../lib/iptvProxy';
 
 // ─── M3U Parser ───────────────────────────────────────────────────────────────
 
@@ -236,15 +237,11 @@ export function useM3UProvider(url: string | null) {
       if (!url) throw new Error('No URL');
 
       const isExternal = /^https?:\/\//i.test(url);
-      const fetchUrl = isExternal
-        ? `https://corsproxy.io/?${encodeURIComponent(url)}`
-        : url;
+      const fetchUrl = isExternal ? proxyStreamUrl(url) : url;
 
       let res: Response;
       try {
-        res = await fetch(fetchUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-        });
+        res = await fetch(fetchUrl);
       } catch (networkErr) {
         throw networkError(url, networkErr);
       }
