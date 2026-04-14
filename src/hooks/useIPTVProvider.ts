@@ -234,9 +234,17 @@ export function useM3UProvider(url: string | null) {
     },
     queryFn: async () => {
       if (!url) throw new Error('No URL');
+
+      const isExternal = /^https?:\/\//i.test(url);
+      const fetchUrl = isExternal
+        ? `https://corsproxy.io/?${encodeURIComponent(url)}`
+        : url;
+
       let res: Response;
       try {
-        res = await fetch(url);
+        res = await fetch(fetchUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
       } catch (networkErr) {
         throw networkError(url, networkErr);
       }
