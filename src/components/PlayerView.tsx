@@ -5,7 +5,7 @@ import { Profile, WatchHistory } from '../types';
 import { EMBED_PROVIDERS, tmdbFetch } from '../lib/tmdb';
 import { LIVE_CHANNELS } from '../lib/liveChannels';
 import { saveHistory, generateId, getPreferredServer, setPreferredServer } from '../lib/storage';
-import { HlsPlayer } from './HlsPlayer';
+import { IPTVPlayer } from './IPTVPlayer';
 
 interface PlayerViewProps {
   profile: Profile;
@@ -146,7 +146,7 @@ export function PlayerView({ profile, tmdbId, mediaType, season = 1, episode = 1
         <div className="max-w-4xl lg:max-w-5xl 2k:max-w-6xl 4k:max-w-none mx-auto">
           <div className={`bg-black rounded-lg overflow-hidden shadow-2xl mb-6 4k:mb-12 ${effectiveTheme === 'dark' ? 'ring-2 ring-blue-500/50 shadow-blue-500/20' : ''} w-full`} style={{ aspectRatio: '16/9' }}>
             {mediaType === 'live' && embedUrl ? (
-              <HlsPlayer
+              <IPTVPlayer
                 src={embedUrl}
                 channelName={channelName}
                 className="w-full h-full"

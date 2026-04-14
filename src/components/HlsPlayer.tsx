@@ -30,8 +30,13 @@ export function HlsPlayer({ src, channelName, className = '' }: HlsPlayerProps) 
       }
     }
 
-    // For non-HLS streams (e.g. plain mp4 / rtmp proxies), fall back to native
-    const isHls = src.includes('.m3u8') || src.includes('/live/') || !src.match(/\.(mp4|webm|ogg)$/i);
+    // Prefer Content-Type detection; fall back to URL extension heuristic.
+    // `.m3u8` extension is the reliable signal; treat unknown extensions as HLS
+    // rather than relying on path segments like `/live/` that are ambiguous.
+    const isHls =
+      src.includes('.m3u8') ||
+      (!src.match(/\.(mp4|webm|ogg|ts)(\?|$)/i) &&
+        video.canPlayType('application/vnd.apple.mpegurl') === '');
 
     if (isHls && Hls.isSupported()) {
       cleanup();
@@ -93,12 +98,15 @@ export function HlsPlayer({ src, channelName, className = '' }: HlsPlayerProps) 
   }, [src]);
 
   function handleRetry() {
+    // Destroy any existing HLS instance before creating a new one
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
     setState('loading');
     setErrorMsg('');
-    if (videoRef.current) {
-      videoRef.current.load();
-    }
-    // Re-trigger effect by toggling — handled by parent re-mount if needed
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -116,6 +124,8 @@ export function HlsPlayer({ src, channelName, className = '' }: HlsPlayerProps) 
         setErrorMsg('Stream playback error. The channel may be offline.');
         setState('error');
       });
+    } else {
+      video.load();
     }
   }
 

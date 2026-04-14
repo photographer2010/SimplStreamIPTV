@@ -4,7 +4,7 @@ import { IPTVChannel, IPTVCategory, XtreamCredentials, XtreamUserInfo, XtreamSer
 // ─── M3U Parser ───────────────────────────────────────────────────────────────
 
 export function parseM3U(text: string): IPTVChannel[] {
-  if (!text.startsWith('#EXTM3U') && !text.includes('#EXTINF')) {
+  if (!text.startsWith('#EXTM3U') || !text.includes('#EXTINF')) {
     throw new Error('Malformed M3U playlist: missing #EXTM3U header or #EXTINF entries');
   }
 

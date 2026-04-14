@@ -40,6 +40,31 @@ interface IPTVViewProps {
   onGoHome: () => void;
 }
 
+// ─── Channel Logo (with error fallback) ──────────────────────────────────────
+
+function ChannelLogo({ logo, name, dark }: { logo?: string; name: string; dark: boolean }) {
+  const [imgError, setImgError] = useState(false);
+  const showFallback = !logo || imgError;
+
+  return (
+    <div
+      className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${
+        dark ? 'bg-gray-800' : 'bg-gray-100'
+      }`}
+    >
+      {!showFallback && (
+        <img
+          src={logo}
+          alt={name}
+          className="w-full h-full object-contain"
+          onError={() => setImgError(true)}
+        />
+      )}
+      {showFallback && <Tv size={18} className="text-blue-500" />}
+    </div>
+  );
+}
+
 // ─── Virtual Channel List ─────────────────────────────────────────────────────
 
 interface VirtualChannelListProps {
@@ -100,29 +125,7 @@ function VirtualChannelList({
                 onClick={() => onPlay(channel)}
                 className={`group flex items-center gap-3 p-3 rounded-xl border text-left transition-all hover:border-blue-500 hover:shadow-md w-full ${cardClass}`}
               >
-                <div
-                  className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${
-                    dark ? 'bg-gray-800' : 'bg-gray-100'
-                  }`}
-                >
-                  {channel.logo ? (
-                    <img
-                      src={channel.logo}
-                      alt={channel.name}
-                      className="w-full h-full object-contain"
-                      onError={e => {
-                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                        const sibling = e.currentTarget.nextElementSibling as HTMLElement | null;
-                        if (sibling) sibling.style.display = '';
-                      }}
-                    />
-                  ) : null}
-                  <Tv
-                    size={18}
-                    className="text-blue-500"
-                    style={channel.logo ? { display: 'none' } : undefined}
-                  />
-                </div>
+                <ChannelLogo logo={channel.logo} name={channel.name} dark={dark} />
 
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium truncate ${textClass}`}>{channel.name}</p>
