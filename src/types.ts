@@ -135,4 +135,59 @@ export interface LiveChannel {
   channelNumber: number;
 }
 
-export type ViewType = 'profiles' | 'home' | 'detail' | 'player';
+export type ViewType = 'profiles' | 'home' | 'detail' | 'player' | 'iptv';
+
+// IPTV Types
+export type IPTVLoginType = 'xtream' | 'm3u';
+
+export interface XtreamCredentials {
+  server: string;
+  username: string;
+  password: string;
+}
+
+export interface M3UCredentials {
+  url: string;
+}
+
+export interface IPTVCredentials {
+  type: IPTVLoginType;
+  xtream?: XtreamCredentials;
+  m3u?: M3UCredentials;
+  savedAt: string;
+}
+
+export interface IPTVChannel {
+  id: string;
+  name: string;
+  streamUrl: string;
+  logo?: string;
+  category: string;
+  epgChannelId?: string;
+}
+
+export interface IPTVCategory {
+  id: string;
+  name: string;
+}
+
+export interface XtreamUserInfo {
+  username: string;
+  password: string;
+  status: string;
+  expDate?: string;
+  isTrial?: string;
+  activeCons?: string;
+  maxConnections?: string;
+}
+
+export interface XtreamServerInfo {
+  url: string;
+  port: string;
+  httpsPort?: string;
+  serverProtocol: string;
+  rtmpPort?: string;
+  timezone?: string;
+  timestampNow?: number;
+  timeNow?: string;
+}

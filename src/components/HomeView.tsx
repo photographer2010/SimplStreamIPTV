@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Search, User, Settings, Lock, Unlock, List, History, Tv, Sparkles, LogOut, Info, FileText, Sun, Moon, Film, UserCog, X, Eye, EyeOff, Play, Plus, Clock, Radio, Trash2, Download, Smartphone, Heart } from 'lucide-react';
+import { Home, Search, User, Settings, Lock, Unlock, List, History, Tv, Sparkles, LogOut, Info, FileText, Sun, Moon, Film, UserCog, X, Eye, EyeOff, Play, Plus, Clock, Radio, Trash2, Download, Smartphone, Heart, Signal } from 'lucide-react';
 import { Profile, TMDBMovie, TMDBShow, WatchlistItem } from '../types';
 import { tmdbFetch, getTMDBImageUrl } from '../lib/tmdb';
 import { getWatchlist, addToWatchlist, removeFromWatchlist, getWatchHistory, isInWatchlist, generateId, saveProfile, removeProfileData, getSearchHistoryEnabled, setSearchHistoryEnabled, clearSearchHistory, getCustomAvatar } from '../lib/storage';
@@ -11,6 +11,7 @@ interface HomeViewProps {
   onLogout: () => void;
   onShowDetail: (id: number, type: 'movie' | 'tv') => void;
   onShowLiveTV: () => void;
+  onShowIPTV: () => void;
   onProfileUpdate: () => void;
   onShowAbout: () => void;
   onShowTerms: () => void;
@@ -20,7 +21,7 @@ interface HomeViewProps {
   onGoHome: () => void;
 }
 
-export function HomeView({ profile, onLogout, onShowDetail, onShowLiveTV, onProfileUpdate, onShowAbout, onShowTerms, onShowSurprise, onShowSearch, onShowSettings, onGoHome }: HomeViewProps) {
+export function HomeView({ profile, onLogout, onShowDetail, onShowLiveTV, onShowIPTV, onProfileUpdate, onShowAbout, onShowTerms, onShowSurprise, onShowSearch, onShowSettings, onGoHome }: HomeViewProps) {
   const [scrolled, setScrolled] = useState(false);
   const [hero, setHero] = useState<(TMDBMovie | TMDBShow) | null>(null);
   const [trendingMovies, setTrendingMovies] = useState<TMDBMovie[]>([]);
@@ -404,6 +405,10 @@ export function HomeView({ profile, onLogout, onShowDetail, onShowLiveTV, onProf
               <Radio size={20} className="2k:w-6 2k:h-6 4k:w-10 4k:h-10" />
               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Live TV</span>
             </button>
+            <button onClick={onShowIPTV} className="group relative p-2 text-gray-400 hover:text-gray-300 rounded-lg transition-all" title="IPTV">
+              <Signal size={20} className="2k:w-6 2k:h-6 4k:w-10 4k:h-10" />
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">IPTV</span>
+            </button>
             <button onClick={onShowSurprise} className="group relative p-2 text-gray-400 hover:text-gray-300 rounded-lg transition-all" title="Surprise Me">
               <Sparkles size={20} className="2k:w-6 2k:h-6 4k:w-10 4k:h-10" />
               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Surprise Me</span>
@@ -533,6 +538,10 @@ export function HomeView({ profile, onLogout, onShowDetail, onShowLiveTV, onProf
           <button onClick={onShowLiveTV} className={`mobile-nav-item flex-1 ${effectiveTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
             <Radio className="w-5 h-5" />
             <span>Live</span>
+          </button>
+          <button onClick={onShowIPTV} className={`mobile-nav-item flex-1 ${effectiveTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <Signal className="w-5 h-5" />
+            <span>IPTV</span>
           </button>
         </div>
       </nav>

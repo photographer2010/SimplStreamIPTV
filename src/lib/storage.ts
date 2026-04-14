@@ -1,4 +1,4 @@
-import { Profile, WatchHistory, WatchlistItem } from '../types';
+import { Profile, WatchHistory, WatchlistItem, IPTVCredentials } from '../types';
 
 const STORAGE_KEYS = {
   PROFILES: 'simplstream_profiles',
@@ -440,4 +440,20 @@ export function deleteCustomAvatar(profileId: string): void {
   const avatars = data ? JSON.parse(data) : {};
   delete avatars[profileId];
   localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATARS, JSON.stringify(avatars));
+}
+
+// IPTV Credentials Management
+const IPTV_CREDENTIALS_KEY = 'simplstream_iptv_credentials';
+
+export function getIPTVCredentials(): IPTVCredentials | null {
+  const data = localStorage.getItem(IPTV_CREDENTIALS_KEY);
+  return data ? JSON.parse(data) : null;
+}
+
+export function saveIPTVCredentials(credentials: IPTVCredentials): void {
+  localStorage.setItem(IPTV_CREDENTIALS_KEY, JSON.stringify(credentials));
+}
+
+export function clearIPTVCredentials(): void {
+  localStorage.removeItem(IPTV_CREDENTIALS_KEY);
 }

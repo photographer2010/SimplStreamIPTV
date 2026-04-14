@@ -5,6 +5,7 @@ import { HomeView } from './components/HomeView';
 import { DetailView } from './components/DetailView';
 import { PlayerView } from './components/PlayerView';
 import { LiveTVView } from './components/LiveTVView';
+import { IPTVView } from './components/IPTVView';
 import { AboutView } from './components/AboutView';
 import { TermsView } from './components/TermsView';
 import { SurpriseMeWizardView } from './components/SurpriseMeWizardView';
@@ -21,6 +22,7 @@ type View =
   | { type: 'profiles' }
   | { type: 'home' }
   | { type: 'livetv' }
+  | { type: 'iptv' }
   | { type: 'about' }
   | { type: 'terms' }
   | { type: 'surprise' }
@@ -77,6 +79,11 @@ function App() {
   function handleShowLiveTV() {
     setPreviousView(currentView);
     setCurrentView({ type: 'livetv' });
+  }
+
+  function handleShowIPTV() {
+    setPreviousView(currentView);
+    setCurrentView({ type: 'iptv' });
   }
 
   function handlePlay(tmdbId: number, mediaType: 'movie' | 'tv' | 'live', season?: number, episode?: number, embedUrl?: string, channelName?: string) {
@@ -163,6 +170,7 @@ function App() {
         onLogout={handleLogout}
         onShowDetail={handleShowDetail}
         onShowLiveTV={handleShowLiveTV}
+        onShowIPTV={handleShowIPTV}
         onProfileUpdate={handleProfileUpdate}
         onShowAbout={handleShowAbout}
         onShowTerms={handleShowTerms}
@@ -243,6 +251,16 @@ function App() {
 
   if (currentView.type === 'terms') {
     return <TermsView onBack={handleBack} onShowSeasonalTest={handleShowSeasonalTest} onShowDevPlayground={handleShowDevPlayground} />;
+  }
+
+  if (currentView.type === 'iptv') {
+    return (
+      <IPTVView
+        onBack={handleBack}
+        onPlay={handlePlay}
+        onGoHome={handleGoHome}
+      />
+    );
   }
 
   if (currentView.type === 'livetv') {
