@@ -44,6 +44,25 @@ export function parseM3U(text: string): IPTVChannel[] {
   return channels;
 }
 
+// ─── Network error helpers ────────────────────────────────────────────────────
+
+/** Extracts just the hostname from a URL for safe inclusion in error messages. */
+function safeHostname(url: string): string {
+  try { return new URL(url).hostname; } catch { return url; }
+}
+
+/**
+ * Converts a network-level fetch failure (TypeError: Failed to fetch, etc.)
+ * into an actionable error message that includes the hostname and likely causes.
+ */
+function networkError(url: string, err: unknown): Error {
+  const cause = err instanceof Error ? err.message : String(err);
+  return new Error(
+    `Network error reaching "${safeHostname(url)}" — ${cause}. ` +
+    `Possible causes: the server is offline, the URL is wrong, DNS cannot resolve the hostname, or a firewall/CORS policy is blocking the request.`
+  );
+}
+
 // ─── Xtream API helpers ───────────────────────────────────────────────────────
 
 function xtreamApiUrl(creds: XtreamCredentials, params: Record<string, string>) {
@@ -58,14 +77,27 @@ export function xtreamStreamUrl(creds: XtreamCredentials, streamId: string | num
 }
 
 async function fetchXtream<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (networkErr) {
+    throw networkError(url, networkErr);
+  }
   if (res.status === 403) {
     throw new Error('Access denied (403 Forbidden). Your subscription may be expired or your IP is blocked.');
   }
   if (!res.ok) {
     throw new Error(`Server returned ${res.status} ${res.statusText}`);
   }
-  return res.json() as Promise<T>;
+  try {
+    return await res.json() as T;
+  } catch (parseErr) {
+    const detail = parseErr instanceof Error ? parseErr.message : String(parseErr);
+    throw new Error(
+      `Server returned a non-JSON response (HTTP ${res.status}): ${detail}. ` +
+      `The server URL may be incorrect, this may not be an Xtream Codes server, or the server returned an error page.`
+    );
+  }
 }
 
 export interface XtreamAuthResult {
@@ -202,14 +234,19 @@ export function useM3UProvider(url: string | null) {
     },
     queryFn: async () => {
       if (!url) throw new Error('No URL');
-      const res = await fetch(url);
+      let res: Response;
+      try {
+        res = await fetch(url);
+      } catch (networkErr) {
+        throw networkError(url, networkErr);
+      }
       if (res.status === 403) {
         throw new Error(
           'Access denied (403 Forbidden). The playlist URL may require authentication or a specific User-Agent.'
         );
       }
       if (!res.ok) {
-        throw new Error(`Failed to fetch M3U playlist: ${res.status} ${res.statusText}`);
+        throw new Error(`Failed to fetch M3U playlist: server returned ${res.status} ${res.statusText}`);
       }
       const text = await res.text();
       const channels = parseM3U(text);
