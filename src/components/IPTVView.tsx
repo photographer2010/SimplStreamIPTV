@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import {
   ArrowLeft,
   Tv,
   Search,
   LogOut,
   RefreshCw,
-  Play,
   Wifi,
   List,
   ChevronRight,
@@ -13,6 +12,7 @@ import {
   Loader2,
   Signal,
 } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTheme } from '../context/ThemeContext';
 import { getIPTVCredentials, saveIPTVCredentials, clearIPTVCredentials } from '../lib/storage';
 import {
@@ -24,6 +24,8 @@ import {
   XtreamUserInfo,
 } from '../types';
 import { Input } from './ui/input';
+import { useXtreamProvider, useM3UProvider } from '../hooks/useIPTVProvider';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface IPTVViewProps {
   onBack: () => void;
@@ -38,130 +40,120 @@ interface IPTVViewProps {
   onGoHome: () => void;
 }
 
-// ─── M3U Parser ──────────────────────────────────────────────────────────────
+// ─── Channel Logo (with error fallback) ──────────────────────────────────────
 
-function parseM3U(text: string): IPTVChannel[] {
-  const channels: IPTVChannel[] = [];
-  const lines = text.split('\n').map(l => l.trim());
+function ChannelLogo({ logo, name, dark }: { logo?: string; name: string; dark: boolean }) {
+  const [imgError, setImgError] = useState(false);
+  const showFallback = !logo || imgError;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.startsWith('#EXTINF')) continue;
+  return (
+    <div
+      className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${
+        dark ? 'bg-gray-800' : 'bg-gray-100'
+      }`}
+    >
+      {!showFallback && (
+        <img
+          src={logo}
+          alt={name}
+          className="w-full h-full object-contain"
+          onError={() => setImgError(true)}
+        />
+      )}
+      {showFallback && <Tv size={18} className="text-blue-500" />}
+    </div>
+  );
+}
 
-    const namePart = line.split(',').slice(1).join(',').trim();
-    const tvgName = line.match(/tvg-name="([^"]*)"/)?.[1] || namePart;
-    const tvgLogo = line.match(/tvg-logo="([^"]*)"/)?.[1] || '';
-    const groupTitle = line.match(/group-title="([^"]*)"/)?.[1] || 'General';
-    const tvgId = line.match(/tvg-id="([^"]*)"/)?.[1] || '';
+// ─── Virtual Channel List ─────────────────────────────────────────────────────
 
-    // Find the next non-comment, non-empty line as the stream URL
-    let streamUrl = '';
-    for (let j = i + 1; j < lines.length; j++) {
-      if (lines[j] && !lines[j].startsWith('#')) {
-        streamUrl = lines[j];
-        break;
-      }
-    }
+interface VirtualChannelListProps {
+  channels: IPTVChannel[];
+  onPlay: (channel: IPTVChannel) => void;
+  dark: boolean;
+  cardClass: string;
+  textClass: string;
+  subTextClass: string;
+}
 
-    if (!streamUrl) continue;
+function VirtualChannelList({
+  channels,
+  onPlay,
+  dark,
+  cardClass,
+  textClass,
+  subTextClass,
+}: VirtualChannelListProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
 
-    channels.push({
-      id: `m3u-${i}`,
-      name: tvgName || namePart,
-      streamUrl,
-      logo: tvgLogo || undefined,
-      category: groupTitle,
-      epgChannelId: tvgId || undefined,
-    });
+  const rowVirtualizer = useVirtualizer({
+    count: channels.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 68,
+    overscan: 10,
+  });
+
+  if (channels.length === 0) {
+    return (
+      <div className={`flex flex-col items-center justify-center py-20 gap-3 ${subTextClass}`}>
+        <Tv size={40} className="opacity-30" />
+        <p className="text-sm">No channels found</p>
+      </div>
+    );
   }
 
-  return channels;
-}
+  return (
+    <div ref={parentRef} className="overflow-y-auto flex-1" style={{ contain: 'strict' }}>
+      <div style={{ height: rowVirtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+        {rowVirtualizer.getVirtualItems().map(virtualRow => {
+          const channel = channels[virtualRow.index];
+          return (
+            <div
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={rowVirtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+              className="px-4 py-1.5"
+            >
+              <button
+                onClick={() => onPlay(channel)}
+                className={`group flex items-center gap-3 p-3 rounded-xl border text-left transition-all hover:border-blue-500 hover:shadow-md w-full ${cardClass}`}
+              >
+                <ChannelLogo logo={channel.logo} name={channel.name} dark={dark} />
 
-// ─── Xtream API helpers ───────────────────────────────────────────────────────
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium truncate ${textClass}`}>{channel.name}</p>
+                  <p className={`text-xs truncate ${subTextClass}`}>{channel.category}</p>
+                </div>
 
-function xtreamApiUrl(creds: XtreamCredentials, params: Record<string, string>) {
-  const base = creds.server.replace(/\/$/, '');
-  const query = new URLSearchParams({ username: creds.username, password: creds.password, ...params });
-  return `${base}/player_api.php?${query.toString()}`;
-}
-
-function xtreamStreamUrl(creds: XtreamCredentials, streamId: string | number, ext = 'm3u8') {
-  const base = creds.server.replace(/\/$/, '');
-  return `${base}/live/${creds.username}/${creds.password}/${streamId}.${ext}`;
-}
-
-async function xtreamAuth(
-  creds: XtreamCredentials
-): Promise<{ userInfo: XtreamUserInfo; serverInfo: Record<string, unknown> }> {
-  const url = xtreamApiUrl(creds, {});
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Server returned ${res.status}`);
-  const data = await res.json();
-  if (!data.user_info) throw new Error('Invalid server response — not an Xtream Codes server?');
-  if (data.user_info.auth === 0) throw new Error('Invalid username or password');
-
-  return {
-    userInfo: {
-      username: data.user_info.username,
-      password: data.user_info.password,
-      status: data.user_info.status,
-      expDate: data.user_info.exp_date
-        ? new Date(Number(data.user_info.exp_date) * 1000).toLocaleDateString()
-        : undefined,
-      isTrial: data.user_info.is_trial,
-      activeCons: data.user_info.active_cons,
-      maxConnections: data.user_info.max_connections,
-    },
-    serverInfo: data.server_info ?? {},
-  };
-}
-
-async function xtreamGetLiveCategories(creds: XtreamCredentials): Promise<IPTVCategory[]> {
-  const res = await fetch(xtreamApiUrl(creds, { action: 'get_live_categories' }));
-  const data = await res.json();
-  return (Array.isArray(data) ? data : []).map((c: { category_id: string; category_name: string }) => ({
-    id: String(c.category_id),
-    name: c.category_name,
-  }));
-}
-
-async function xtreamGetLiveStreams(
-  creds: XtreamCredentials,
-  categoryId?: string
-): Promise<IPTVChannel[]> {
-  const params: Record<string, string> = { action: 'get_live_streams' };
-  if (categoryId) params['category_id'] = categoryId;
-
-  const res = await fetch(xtreamApiUrl(creds, params));
-  const data = await res.json();
-  return (Array.isArray(data) ? data : []).map(
-    (ch: {
-      stream_id: number;
-      name: string;
-      stream_icon?: string;
-      category_id?: string;
-      epg_channel_id?: string;
-    }) => ({
-      id: String(ch.stream_id),
-      name: ch.name,
-      streamUrl: xtreamStreamUrl(creds, ch.stream_id),
-      logo: ch.stream_icon || undefined,
-      category: ch.category_id || '',
-      epgChannelId: ch.epg_channel_id || undefined,
-    })
+                <ChevronRight
+                  size={16}
+                  className={`flex-shrink-0 ${subTextClass} group-hover:text-blue-500 transition-colors`}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 type LoginTab = 'xtream' | 'm3u';
-type AppState = 'login' | 'loading' | 'channels' | 'error';
+type AppState = 'login' | 'connecting' | 'channels' | 'error';
 
 export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
   const { effectiveTheme } = useTheme();
+  const queryClient = useQueryClient();
 
-  // Theme helpers
   const dark = effectiveTheme === 'dark';
   const bgClass = dark ? 'bg-black' : 'bg-gray-50';
   const cardClass = dark ? 'bg-gray-900/60 border-gray-800' : 'bg-white border-gray-200';
@@ -171,77 +163,64 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
     ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500';
 
-  // Login form
   const [loginTab, setLoginTab] = useState<LoginTab>('xtream');
   const [xtreamServer, setXtreamServer] = useState('');
   const [xtreamUser, setXtreamUser] = useState('');
   const [xtreamPass, setXtreamPass] = useState('');
   const [m3uUrl, setM3uUrl] = useState('');
 
-  // App state
-  const [appState, setAppState] = useState<AppState>('login');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [credentials, setCredentials] = useState<IPTVCredentials | null>(null);
-  const [userInfo, setUserInfo] = useState<XtreamUserInfo | null>(null);
-
-  // Channel data
-  const [categories, setCategories] = useState<IPTVCategory[]>([]);
-  const [channels, setChannels] = useState<IPTVChannel[]>([]);
+  const [credentials, setCredentials] = useState<IPTVCredentials | null>(() => getIPTVCredentials());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load saved credentials on mount
-  useEffect(() => {
-    const saved = getIPTVCredentials();
-    if (saved) {
-      setCredentials(saved);
-      void connectWithCredentials(saved);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const xtreamCreds: XtreamCredentials | null =
+    credentials?.type === 'xtream' && credentials.xtream ? credentials.xtream : null;
+  const m3uUrlActive: string | null =
+    credentials?.type === 'm3u' && credentials.m3u ? credentials.m3u.url : null;
 
-  const connectWithCredentials = useCallback(async (creds: IPTVCredentials) => {
-    setAppState('loading');
-    setErrorMsg('');
-    try {
-      if (creds.type === 'xtream' && creds.xtream) {
-        const { userInfo: ui } = await xtreamAuth(creds.xtream);
-        setUserInfo(ui);
-        const cats = await xtreamGetLiveCategories(creds.xtream);
-        const all = await xtreamGetLiveStreams(creds.xtream);
-        setCategories(cats);
-        setChannels(all);
-      } else if (creds.type === 'm3u' && creds.m3u) {
-        const res = await fetch(creds.m3u.url);
-        if (!res.ok) throw new Error(`Failed to fetch M3U: ${res.status}`);
-        const text = await res.text();
-        const parsed = parseM3U(text);
-        if (parsed.length === 0) throw new Error('No channels found in the M3U playlist');
-        const uniqueCategories = Array.from(new Set(parsed.map(c => c.category))).map(name => ({
-          id: name,
-          name,
-        }));
-        setCategories(uniqueCategories);
-        setChannels(parsed);
-      }
-      saveIPTVCredentials(creds);
-      setAppState('channels');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Connection failed';
-      setErrorMsg(msg);
-      setAppState('error');
-    }
-  }, []);
+  const xtreamQuery = useXtreamProvider(xtreamCreds);
+  const m3uQuery = useM3UProvider(m3uUrlActive);
 
-  async function handleLogin() {
+  const activeQuery = credentials?.type === 'xtream' ? xtreamQuery : m3uQuery;
+
+  const categories: IPTVCategory[] = useMemo(
+    () => activeQuery.data?.categories ?? [],
+    [activeQuery.data]
+  );
+  const channels: IPTVChannel[] = useMemo(
+    () => activeQuery.data?.channels ?? [],
+    [activeQuery.data]
+  );
+  const userInfo: XtreamUserInfo | null =
+    credentials?.type === 'xtream' && xtreamQuery.data ? xtreamQuery.data.userInfo : null;
+
+  const appState: AppState = useMemo(() => {
+    if (!credentials) return 'login';
+    if (activeQuery.isFetching && !activeQuery.data) return 'connecting';
+    if (activeQuery.isError) return 'error';
+    if (activeQuery.isSuccess) return 'channels';
+    return 'connecting';
+  }, [credentials, activeQuery.isFetching, activeQuery.data, activeQuery.isError, activeQuery.isSuccess]);
+
+  const errorMsg =
+    activeQuery.error instanceof Error ? activeQuery.error.message : 'Connection failed';
+
+  const filteredChannels = useMemo(() => {
+    return channels.filter(ch => {
+      const matchCat =
+        selectedCategory === 'all' ||
+        ch.category === selectedCategory ||
+        ch.id === selectedCategory;
+      const matchSearch =
+        !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [channels, selectedCategory, searchQuery]);
+
+  function handleLogin() {
     let creds: IPTVCredentials;
-
     if (loginTab === 'xtream') {
-      if (!xtreamServer.trim() || !xtreamUser.trim() || !xtreamPass.trim()) {
-        setErrorMsg('Please fill in all Xtream fields');
-        setAppState('error');
-        return;
-      }
+      if (!xtreamServer.trim() || !xtreamUser.trim() || !xtreamPass.trim()) return;
       let server = xtreamServer.trim();
       if (!server.startsWith('http://') && !server.startsWith('https://')) {
         server = `http://${server}`;
@@ -253,58 +232,46 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
       };
       creds = { type: 'xtream', xtream, savedAt: new Date().toISOString() };
     } else {
-      if (!m3uUrl.trim()) {
-        setErrorMsg('Please enter an M3U URL');
-        setAppState('error');
-        return;
-      }
+      if (!m3uUrl.trim()) return;
       const m3u: M3UCredentials = { url: m3uUrl.trim() };
       creds = { type: 'm3u', m3u, savedAt: new Date().toISOString() };
     }
-
+    saveIPTVCredentials(creds);
     setCredentials(creds);
-    await connectWithCredentials(creds);
   }
 
-  function handleLogout() {
+  const handleLogout = useCallback(() => {
     clearIPTVCredentials();
     setCredentials(null);
-    setUserInfo(null);
-    setChannels([]);
-    setCategories([]);
     setSelectedCategory('all');
     setSearchQuery('');
     setXtreamServer('');
     setXtreamUser('');
     setXtreamPass('');
     setM3uUrl('');
-    setErrorMsg('');
-    setAppState('login');
-  }
+    queryClient.removeQueries({ queryKey: ['xtream'] });
+    queryClient.removeQueries({ queryKey: ['m3u'] });
+  }, [queryClient]);
 
-  function handleRefresh() {
-    if (credentials) void connectWithCredentials(credentials);
-  }
+  const handleRefresh = useCallback(() => {
+    if (credentials?.type === 'xtream' && xtreamCreds) {
+      void queryClient.invalidateQueries({
+        queryKey: ['xtream', xtreamCreds.server, xtreamCreds.username],
+      });
+    } else if (credentials?.type === 'm3u' && m3uUrlActive) {
+      void queryClient.invalidateQueries({ queryKey: ['m3u', m3uUrlActive] });
+    }
+  }, [credentials, xtreamCreds, m3uUrlActive, queryClient]);
 
   function handlePlayChannel(channel: IPTVChannel) {
     onPlay(0, 'live', undefined, undefined, channel.streamUrl, channel.name);
   }
 
-  const filteredChannels = channels.filter(ch => {
-    const matchCat =
-      selectedCategory === 'all' ||
-      ch.category === selectedCategory ||
-      ch.id === selectedCategory;
-    const matchSearch =
-      !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCat && matchSearch;
-  });
+  // ── Render: Login ──────────────────────────────────────────────────────────
 
-  // ── Render: Login ────────────────────────────────────────────────────────────
-  const renderLogin = () => (
+  const renderLogin = (loginError?: string) => (
     <div className="flex-1 flex items-center justify-center p-4">
       <div className={`w-full max-w-md rounded-2xl border ${cardClass} p-8 shadow-xl`}>
-        {/* Icon */}
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 rounded-full bg-blue-600/20 flex items-center justify-center">
             <Signal size={32} className="text-blue-500" />
@@ -316,10 +283,13 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
           Connect your IPTV service to watch live channels
         </p>
 
-        {/* Tab selector */}
-        <div className={`flex rounded-lg overflow-hidden border mb-6 ${dark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div
+          className={`flex rounded-lg overflow-hidden border mb-6 ${
+            dark ? 'border-gray-700' : 'border-gray-200'
+          }`}
+        >
           <button
-            onClick={() => { setLoginTab('xtream'); setErrorMsg(''); setAppState('login'); }}
+            onClick={() => setLoginTab('xtream')}
             className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
               loginTab === 'xtream'
                 ? 'bg-blue-600 text-white'
@@ -331,7 +301,7 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
             Xtream Codes
           </button>
           <button
-            onClick={() => { setLoginTab('m3u'); setErrorMsg(''); setAppState('login'); }}
+            onClick={() => setLoginTab('m3u')}
             className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
               loginTab === 'm3u'
                 ? 'bg-blue-600 text-white'
@@ -344,21 +314,17 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
           </button>
         </div>
 
-        {/* Error */}
-        {appState === 'error' && errorMsg && (
+        {loginError && (
           <div className="flex items-start gap-2 mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
             <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-            <span>{errorMsg}</span>
+            <span>{loginError}</span>
           </div>
         )}
 
-        {/* Xtream form */}
         {loginTab === 'xtream' && (
           <div className="space-y-3">
             <div>
-              <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>
-                Server URL
-              </label>
+              <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>Server URL</label>
               <Input
                 value={xtreamServer}
                 onChange={e => setXtreamServer(e.target.value)}
@@ -368,9 +334,7 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
               />
             </div>
             <div>
-              <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>
-                Username
-              </label>
+              <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>Username</label>
               <Input
                 value={xtreamUser}
                 onChange={e => setXtreamUser(e.target.value)}
@@ -381,9 +345,7 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
               />
             </div>
             <div>
-              <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>
-                Password
-              </label>
+              <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>Password</label>
               <Input
                 type="password"
                 value={xtreamPass}
@@ -397,7 +359,6 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
           </div>
         )}
 
-        {/* M3U form */}
         {loginTab === 'm3u' && (
           <div>
             <label className={`text-xs font-medium mb-1 block ${subTextClass}`}>
@@ -426,7 +387,8 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
     </div>
   );
 
-  // ── Render: Loading ──────────────────────────────────────────────────────────
+  // ── Render: Loading ────────────────────────────────────────────────────────
+
   const renderLoading = () => (
     <div className="flex-1 flex flex-col items-center justify-center gap-4">
       <Loader2 size={40} className="text-blue-500 animate-spin" />
@@ -434,13 +396,12 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
     </div>
   );
 
-  // ── Render: Channel Browser ──────────────────────────────────────────────────
+  // ── Render: Channel Browser ────────────────────────────────────────────────
+
   const renderChannels = () => (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Search + info bar */}
       <div className={`px-4 py-3 border-b ${dark ? 'border-gray-800' : 'border-gray-200'}`}>
         <div className="max-w-[1920px] mx-auto flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          {/* Account info */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="flex items-center gap-2">
               <Wifi size={14} className="text-green-500" />
@@ -455,10 +416,8 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
             )}
           </div>
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Search */}
           <div className="relative w-full sm:w-64">
             <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${subTextClass}`} />
             <Input
@@ -471,7 +430,6 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
         </div>
       </div>
 
-      {/* Body: categories + channel grid */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Category sidebar */}
         <aside
@@ -499,7 +457,9 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
           </button>
 
           {categories.map(cat => {
-            const count = channels.filter(c => c.category === cat.id || c.category === cat.name).length;
+            const count = channels.filter(
+              c => c.category === cat.id || c.category === cat.name
+            ).length;
             return (
               <button
                 key={cat.id}
@@ -525,13 +485,10 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
           })}
         </aside>
 
-        {/* Mobile: horizontal category scroll */}
-        <div className="sm:hidden absolute top-0 left-0 right-0 z-10" />
-
-        {/* Channel list */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Channel list (virtualized) */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Mobile category bar */}
-          <div className="sm:hidden flex gap-2 overflow-x-auto pb-3 mb-3 no-scrollbar">
+          <div className="sm:hidden flex gap-2 overflow-x-auto px-4 pb-3 pt-3 no-scrollbar flex-shrink-0">
             <button
               onClick={() => setSelectedCategory('all')}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -561,67 +518,23 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
             ))}
           </div>
 
-          {filteredChannels.length === 0 ? (
-            <div className={`flex flex-col items-center justify-center py-20 gap-3 ${subTextClass}`}>
-              <Tv size={40} className="opacity-30" />
-              <p className="text-sm">No channels found</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-              {filteredChannels.map(channel => (
-                <button
-                  key={channel.id}
-                  onClick={() => handlePlayChannel(channel)}
-                  className={`group flex items-center gap-3 p-3 rounded-xl border text-left transition-all hover:border-blue-500 hover:shadow-md ${cardClass}`}
-                >
-                  {/* Logo or placeholder */}
-                  <div
-                    className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${
-                      dark ? 'bg-gray-800' : 'bg-gray-100'
-                    }`}
-                  >
-                    {channel.logo ? (
-                      <img
-                        src={channel.logo}
-                        alt={channel.name}
-                        className="w-full h-full object-contain"
-                        onError={e => {
-                          (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('style');
-                        }}
-                      />
-                    ) : null}
-                    <Tv
-                      size={18}
-                      className={`text-blue-500 ${channel.logo ? 'hidden' : ''}`}
-                      style={channel.logo ? { display: 'none' } : undefined}
-                    />
-                  </div>
-
-                  {/* Name */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${textClass}`}>{channel.name}</p>
-                    <p className={`text-xs truncate ${subTextClass}`}>{channel.category}</p>
-                  </div>
-
-                  {/* Play icon */}
-                  <ChevronRight
-                    size={16}
-                    className={`flex-shrink-0 ${subTextClass} group-hover:text-blue-500 transition-colors`}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+          <VirtualChannelList
+            channels={filteredChannels}
+            onPlay={handlePlayChannel}
+            dark={dark}
+            cardClass={cardClass}
+            textClass={textClass}
+            subTextClass={subTextClass}
+          />
         </div>
       </div>
     </div>
   );
 
-  // ── Full render ──────────────────────────────────────────────────────────────
+  // ── Full render ────────────────────────────────────────────────────────────
+
   return (
     <div className={`min-h-screen flex flex-col ${bgClass} ${textClass}`}>
-      {/* Header */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 ${
           dark ? 'glass-header' : 'glass-header-light'
@@ -643,12 +556,13 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
             <span className="text-blue-500">Simpl</span>Stream
           </button>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
             {appState === 'channels' && (
               <button
                 onClick={handleRefresh}
-                className={`p-2 rounded-lg transition-colors ${dark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'} ${subTextClass} hover:text-blue-500`}
+                className={`p-2 rounded-lg transition-colors ${
+                  dark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                } ${subTextClass} hover:text-blue-500`}
                 title="Refresh"
               >
                 <RefreshCw size={18} />
@@ -658,7 +572,9 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
               <button
                 onClick={handleLogout}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  dark ? 'hover:bg-gray-800 text-gray-400 hover:text-red-400' : 'hover:bg-gray-100 text-gray-500 hover:text-red-500'
+                  dark
+                    ? 'hover:bg-gray-800 text-gray-400 hover:text-red-400'
+                    : 'hover:bg-gray-100 text-gray-500 hover:text-red-500'
                 }`}
                 title="Disconnect"
               >
@@ -669,7 +585,6 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
           </div>
         </div>
 
-        {/* Section label */}
         <div className={`px-4 sm:px-6 pb-2 flex items-center gap-2 ${subTextClass}`}>
           <Signal size={14} />
           <span className="text-sm font-medium">IPTV</span>
@@ -682,15 +597,14 @@ export function IPTVView({ onBack, onPlay, onGoHome }: IPTVViewProps) {
         </div>
       </header>
 
-      {/* Content (offset for fixed header ~72px) */}
       <div className="flex flex-col flex-1 pt-20">
-        {appState === 'login' || (appState === 'error' && !credentials)
+        {appState === 'login'
           ? renderLogin()
-          : appState === 'loading'
+          : appState === 'connecting'
           ? renderLoading()
           : appState === 'channels'
           ? renderChannels()
-          : /* error with credentials — show login again */ renderLogin()}
+          : renderLogin(errorMsg)}
       </div>
     </div>
   );
